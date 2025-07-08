@@ -47,7 +47,7 @@
             <th>Name</th>
             <th>Subject</th>
             <th>Status</th>
-            <th>Last Replier</th>
+            <!-- <th>Last Replier</th> -->
             <th>Due Date</th>
             <th>Priority</th>
             <th>Response Due</th>
@@ -62,11 +62,11 @@
     </section>
     <div id="attentionBox" class="attention-box">
       <strong>⚠️ Attention:</strong>
-      <p>You have <span id="slaBreachedCount">0</span> ticket(s) with SLA breached</p>
-      <p>You have <span id="slaNearingCount">0</span> ticket(s) with SLA nearing deadline</p>
-      <p>You have <span id="overdueCount">0</span> overdue ticket(s)</p>
-      <p>You have <span id="dueSoonCount">0</span> ticket(s) due soon</p>
-      <p>There are <span id="openCount">0</span> open ticket(s) that need attention</p>
+      <p>You have <span id="attentionslaBreached">0</span> ticket(s) with SLA breached</p>
+      <p>You have <span id="attentionslaNearing">0</span> ticket(s) with SLA nearing deadline</p>
+      <p>You have <span id="attentionoverdue">0</span> overdue ticket(s)</p>
+      <p>You have <span id="attentiondueSoon">0</span> ticket(s) due soon</p>
+      <p>There are <span id="attentionopen">0</span> open ticket(s) that need attention</p>
     </div>
   </main>
 </div>
@@ -259,9 +259,14 @@ function renderTickets(filterType) {
   document.getElementById("closed-count").innerText = count.closed;
   document.getElementById("overdueCount").textContent = overdueAssigned;
   document.getElementById("dueSoonCount").textContent = dueSoonAssigned;
-  document.getElementById("openCount").textContent = count.open;
   document.getElementById("slaBreachedCount").textContent = agentSlaBreached;
   document.getElementById("slaNearingCount").textContent = agentSlaNearing;
+
+  document.getElementById("attentionopen").textContent = count.open;
+document.getElementById("attentionslaBreached").textContent = agentSlaBreached;
+document.getElementById("attentionslaNearing").textContent = agentSlaNearing;
+document.getElementById("attentionoverdue").textContent = overdueAssigned;
+document.getElementById("attentiondueSoon").textContent = dueSoonAssigned;
 
   const hasAttention =
     overdueAssigned > 0 ||

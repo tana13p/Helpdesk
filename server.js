@@ -195,7 +195,7 @@ app.get('/assigned-tickets/:userId', async (req, res) => {
          sla.RESPONSE_TIME_HOURS,
          sla.RESOLUTION_TIME_HOURS,
          u.USERNAME AS NAME,
-         ts.STATUS_NAME AS STATUS
+         ts.STATUS_NAME AS STATUS,
          (
     SELECT u2.USERNAME
     FROM ticket_comments tc
