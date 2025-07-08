@@ -1,0 +1,589 @@
+/* Base styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+}
+
+html, body {
+  height: 100%;
+  background-color: #f3f6fa;
+  color: #333;
+}
+
+/* Dashboard Layout */
+.dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background-color: #233044;
+  color: white;
+  padding: 20px;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.sidebar h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 10px 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.sidebar li:hover {
+  background-color: #2e3b4e;
+  border-radius: 4px;
+}
+.sidebar a {
+  text-decoration: none; /* removes underline */
+  color: white;           /* keeps it looking like regular text */
+  display: block;
+  padding: 10px 15px;
+}
+
+.sidebar select,
+.sidebar input {
+  width: 100%;
+  padding: 6px;
+  margin-top: 4px;
+  border-radius: 4px;
+  border: none;
+  font-size: 14px;
+}
+/* Main Content */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.create-ticket-btn {
+  background-color: #2a7ae2;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.create-ticket-btn:hover {
+  background-color: #1d5cb0;
+}
+
+.user-info {
+  font-weight: 500;
+}
+
+/* Ticket Summary Filters */
+.ticket-summary {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  border: none;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.filter-btn.active {
+  border: 2px solid #2a7ae2;
+}
+
+.filter-btn.due {
+  background-color: #fef9e7;
+}
+
+.filter-btn.overdue {
+  background-color: #fdecea;
+}
+
+.badge {
+  background-color: #e1e1e1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 6px;
+}
+
+.badge.red {
+  background-color: #e74c3c;
+  color: white;
+}
+
+/* Ticket Table */
+.ticket-table {
+  overflow-x: auto;
+}
+
+.ticket-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.ticket-table th,
+.ticket-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.ticket-table th {
+  background-color: #f2f2f2;
+}
+
+/* Priority Colors */
+.priority-critical {
+  color: red;
+  font-weight: bold;
+}
+.priority-high {
+  color: orange;
+}
+.priority-medium {
+  color: green;
+}
+.priority-low {
+  color: blue;
+}
+
+/* Create Ticket Form */
+.create-ticket {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.create-ticket h2 {
+  margin-bottom: 20px;
+  color: #2a7ae2;
+}
+
+.create-ticket form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.create-ticket input[type="text"],
+.create-ticket textarea,
+.create-ticket select {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #f9f9f9;
+  transition: border-color 0.3s ease;
+}
+
+.create-ticket input:focus,
+.create-ticket textarea:focus,
+.create-ticket select:focus {
+  border-color: #2a7ae2;
+  outline: none;
+}
+
+.create-ticket button[type="submit"] {
+  padding: 12px;
+  background-color: #05386B;
+  color: white;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.create-ticket button[type="submit"]:hover {
+  background-color: #032a4a;
+}
+.sidebar li.active {
+  background-color: #2e3b4e; /* Darker background */
+  color: #fff; /* White text */
+  font-weight: bold;
+  border-radius: 6px;
+  padding-left: 10px;
+}
+
+/* Ticket Header */
+.ticket-header {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ticket-header h1 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.ticket-header p {
+  font-size: 15px;
+  color: #555;
+}
+
+/* Message Thread */
+.message-thread {
+  margin-bottom: 20px;
+}
+
+.message {
+  background-color: #ffffff;
+  border-left: 4px solid #2a7ae2;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.message.customer {
+  border-left-color: #e67e22;
+}
+
+.message.agent {
+  border-left-color: #2a7ae2;
+}
+
+.message p {
+  margin-bottom: 8px;
+}
+
+.message span {
+  font-size: 13px;
+  color: #666;
+}
+
+/* Toolbar and Editor */
+.reply-box {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+
+.toolbar {
+  margin-bottom: 10px;
+}
+
+.toolbar button,
+.toolbar select {
+  margin-right: 8px;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background: #f8f8f8;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar button:hover {
+  background-color: #e8e8e8;
+}
+
+.editor {
+  min-height: 120px;
+  padding: 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+/* Attachments */
+.attachment-box {
+  margin-bottom: 12px;
+}
+
+.attachment-box button {
+  padding: 8px 12px;
+  background-color: #2a7ae2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.attachment-box button:hover {
+  background-color: #1d5cb0;
+}
+
+/* Options */
+.options {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.options input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Submit Buttons */
+.submit-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.submit-buttons button {
+  padding: 10px 16px;
+  border: none;
+  background-color: #05386B;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.submit-buttons button:hover {
+  background-color: #032a4a;
+}
+
+/* Submit Buttons */
+.attachments-container {
+  display: flex;
+  gap: 10px;
+}
+
+/* Scroll handling */
+.sidebar,
+.main-content {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sidebar::-webkit-scrollbar,
+.main-content::-webkit-scrollbar {
+  width: 6px;
+}
+.sidebar::-webkit-scrollbar-thumb,
+.main-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    order: 2;
+  }
+
+  .main-content {
+    order: 1;
+  }
+
+  .options {
+    flex-direction: column;
+  }
+
+  .submit-buttons {
+    flex-direction: column;
+  }
+}
+select.no-arrow {
+  appearance: none;             /* Standard */
+  -webkit-appearance: none;     /* Safari/Chrome */
+  -moz-appearance: none;        /* Firefox */
+  background-image: none !important;
+background-color: white;       /* Normal background */
+  color: black;                  /* Normal text */
+  cursor: default;               /* Looks like static text */
+  border: 1px solid #ccc;
+  padding: 5px;
+}
+select.no-arrow:disabled {
+  opacity: 1;
+  color: black;
+  background-color: white;
+}
+
+.message-thread {
+  border-top: 1px solid #ccc;
+  margin-top: 20px;
+  padding-top: 15px;
+}
+
+.message {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 5px;
+  background: #f1f1f1;
+}
+
+.message.agent {
+  background-color: #e6f7ff;
+}
+
+.message.customer {
+  background-color: #fffbe6;
+}
+
+.message span {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.comment {
+  border-radius: 10px;
+  padding: 10px;
+  margin: 10px 0;
+  max-width: 70%;
+  clear: both;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* OWN comment = current user */
+.own-comment {
+  background-color: #99e2ec;  /* ✅ Green */
+  margin-left: auto;
+  text-align: right;
+  float: right;
+}
+
+/* From a customer (not you) */
+.customer-comment {
+  background-color: #f4f6f7;
+  margin-right: auto;
+  float: left;
+  text-align: left;
+}
+
+/* From an agent (not you) */
+.agent-comment {
+  background-color: #f4f6f7;
+  margin-right: auto;
+  float: left;
+  text-align: left;
+}
+
+
+.comment-author {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.comment-time {
+  font-size: 0.8em;
+  color: gray;
+  margin-top: 5px;
+}
+
+
+.comment-author {
+  font-weight: bold;
+}
+
+.comment-text {
+  margin: 5px 0;
+}
+
+.toolbar button.active {
+  background-color: #007bff;
+  color: white;
+}
+
+.file-list {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.file-list ul {
+  padding-left: 1rem;
+  margin: 0;
+}
+
+.file-list li {
+  margin-bottom: 4px;
+}
+
+.attention-box {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  padding: 10px 15px;
+  font-size: 14px;
+  color: #856404;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+#triggerTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+#triggerTable th, #triggerTable td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+#triggerTable th {
+  background-color: #f4f4f4;
+}
+
+.overdue-row {
+  background-color: #0011c8;  /* 🟠 Dark Orange */
+  color: white;
+}
+
+.due-soon-row {
+  background-color: #23dce9;  /* 🍑 Light Orange / Peach */
+  color: #000;
+}
+
+.sla-breached {
+  background-color: #FF4C4C;  /* 🔴 Red */
+  color: white;
+  font-weight: bold;
+}
+
+.sla-nearing {
+  background-color: #feee11;  /* 🟡 Yellow */
+  color: #000;
+  font-weight: bold;
+}

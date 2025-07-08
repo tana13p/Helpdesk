@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign In</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    /* Simple styling for message */
+    .message {
+      margin-top: 15px;
+      font-weight: 600;
+      color: red;
+    }
+    .message.success {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Helpdesk System</h1>
+    <p>Welcome back! Please sign in.</p>
+
+    <div class="input-group">
+      <label class="label" for="email">Email</label>
+      <input
+        type="email"
+        id="email"
+        class="input-box"
+        placeholder="Enter your email"
+      />
+    </div>
+
+    <div class="input-group">
+      <label class="label" for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        class="input-box"
+        placeholder="Enter your password"
+      />
+    </div>
+
+    <button class="btn" id="signInBtn">Sign In</button>
+
+    <div id="message" class="message"></div>
+
+    <div class="link-text">
+      <a href="forgot-password.html">Forgot password?</a>
+    </div>
+  </div>
+
+  <script>
+  document.getElementById('signInBtn').addEventListener('click', async function () {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const messageDiv = document.getElementById('message');
+
+    // Clear previous message
+    messageDiv.textContent = '';
+    messageDiv.classList.remove('success');
+
+    if (!email || !password) {
+      messageDiv.textContent = 'Please enter both email and password.';
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3000/api/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        messageDiv.textContent = 'Login successful! Redirecting...';
+        messageDiv.classList.add('success');
+
+        // Redirect based on role_id
+        setTimeout(() => {
+          if (result.role_id === 1) {
+            window.location.href = 'admin_dashboard.html';
+          } else if (result.role_id === 2) {
+            window.location.href = 'agent_dashboard.html';
+          } else {
+            window.location.href = 'customer_dashboard.html'; // default
+          }
+        }, 1500);
+      } else {
+        messageDiv.textContent = result.message;
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+      messageDiv.textContent = 'Something went wrong. Try again later.';
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Admin Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+  <aside class="sidebar">
+    <h2>Help Desk</h2>
+    <ul>
+      <li><a href="dashboard.html" class="nav-link" id="nav-tickets"><span>📋</span> Tickets</a></li>
+      <li><a href="templates.html" class="nav-link" id="nav-templates"><span>📄</span> Templates</a></li>
+      <li><a href="knowledgebase.html" class="nav-link" id="nav-kb"><span>📚</span> Knowledgebase</a></li>
+      <li><a href="categories.html" class="nav-link" id="nav-categories"><span>📂</span> Categories</a></li>
+      <li><a href="team.html" class="nav-link" id="nav-team"><span>👥</span> Team</a></li>
+      <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
+      <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+      <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <header class="dashboard-header">
+      <button class="btn create-ticket-btn">Create New Ticket</button>
+      <div class="user-info">👤 Klemen ▾</div>
+    </header>
+
+    <section class="ticket-summary">
+  <button class="filter-btn active" data-type="open">Open Tickets <span class="badge" id="open-count">0</span></button>
+  <button class="filter-btn" data-type="assigned">Assigned<span class="badge" id="assigned-count">0</span></button>
+  <button class="filter-btn due" data-type="due">Due Soon <span class="badge" id="due-count">0</span></button>
+  <button class="filter-btn overdue" data-type="overdue">Overdue <span class="badge red" id="overdue-count">0</span></button>
+  <button class="filter-btn" data-type="resolved">Resolved <span class="badge" id="resolved-count">0</span></button>
+  <button class="filter-btn" data-type="closed">Closed <span class="badge" id="closed-count">0</span></button>
+</section>
+    <section class="ticket-table" id="ticketTableSection">
+      <table>
+        <thead>
+          <tr>
+            <th>Tracking ID</th>
+            <th>Updated</th>
+            <th>Name</th>
+            <th>Assigned Agent</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Last Replier</th>
+            <th>Due Date</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody id="ticketList">
+        </tbody>
+      </table>
+    </section>
+    <div id="attentionBox" class="attention-box">
+      <strong>⚠️ Attention:</strong>
+      <p>You have <span id="overdueCount">0</span> overdue ticket(s)</p>
+      <p>You have <span id="dueSoonCount">0</span> ticket(s) due soon</p>
+      <p>There are <span id="openCount">0</span> open ticket(s) that need attention</p>
+    </div>
+  </main>
+</div>
+
+<script>
+    let userId = null;  // global userId
+      window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/me', {
+        credentials: 'include'
+      });
+    const data = await response.json();
+
+      if (response.ok) {
+  userId = data.userId;
+  console.log("✅ Logged-in user ID:", userId);
+  // Wait until userId is properly assigned, then load tickets
+  setTimeout(() => loadAllTickets(), 0);
+} else {
+        alert('Not logged in. Redirecting to login page.');
+        window.location.href = 'signin.html';
+      }
+    } catch (err) {
+      console.error('Error fetching user info:', err);
+    }
+    console.log("Logged-in user ID:", userId);
+  });
+
+const ticketList = document.getElementById("ticketList");
+let allTickets = [];
+async function loadAllTickets() {
+  try {
+    const res = await fetch(`http://localhost:3000/api/admin/all-tickets`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include"
+    });
+
+    if (!res.ok) {
+      console.error("❌ Failed to fetch tickets:", res.status);
+      alert("Error fetching tickets.");
+      return;
+    }
+
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      console.error("❌ Invalid response format. Expected an array but got:", data);
+      alert("Invalid ticket data.");
+      return;
+    }
+
+    allTickets = data;
+    console.log("✅ Loaded tickets:", allTickets);
+    renderTickets("open");
+
+  } catch (err) {
+    console.error("🔥 Error fetching tickets:", err);
+  }
+}
+
+function renderTickets(filterType) {
+  ticketList.innerHTML = "";
+  const now = new Date();
+  let count = {
+    open: 0,
+    assigned: 0,
+    due: 0,
+    overdue: 0,
+    resolved: 0,
+    closed: 0
+  };
+
+  const filtered = allTickets.filter(ticket => {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let isDueValid = false;
+    let diffDays = null;
+    if (ticket.DUE_DATE) {
+      const dueDate = new Date(ticket.DUE_DATE);
+      if (!isNaN(dueDate)) {
+        isDueValid = true;
+        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        diffDays = Math.floor((dueDateOnly - today) / (1000 * 60 * 60 * 24));
+        if (diffDays < 7 && diffDays >= 0) count.due++;
+        else if (diffDays < 0) count.overdue++;
+      }
+    }
+    if (ticket.STATUS_ID === 1) count.open++;
+    if (ticket.ASSIGNED_TO != null) count.assigned++;
+    if (ticket.STATUS_ID === 3) count.resolved++;
+    if (ticket.STATUS_ID === 4) count.closed++;
+
+    switch (filterType) {
+      case "open": return ticket.STATUS_ID === 1;
+      case "assigned": return ticket.ASSIGNED_TO != null;
+      case "due": return isDueValid && diffDays <= 7 && diffDays >= 0;
+      case "overdue": return isDueValid && diffDays < 0;
+      case "resolved": return ticket.STATUS_ID === 3;
+      case "closed": return ticket.STATUS_ID === 4;
+      default: return true;
+    }
+  });
+
+  if (filtered.length === 0) {
+    console.log("📋 All Tickets:", allTickets);
+console.log("🔎 Filter Type:", filterType);
+console.log("🎯 Filtered Tickets:", filtered);
+    ticketList.innerHTML = "<tr><td colspan='7'>No tickets in this category.</td></tr>";
+    return;
+  }
+let overdueAssigned = 0;
+let dueSoonAssigned = 0;
+
+  filtered.forEach(ticket => {
+    const row = document.createElement("tr");
+    const dueDate = ticket.DUE_DATE ? new Date(ticket.DUE_DATE) : null;
+const today = new Date();
+let diffDays = null;
+let isOverdue = false, isDueSoon = false;
+
+if (dueDate && !isNaN(dueDate)) {
+  const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  diffDays = Math.floor((dueDateOnly - todayOnly) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    isOverdue = true;
+    row.classList.add("overdue-row");
+  } else if (diffDays <= 7 && diffDays >= 0) {
+    isDueSoon = true;
+    row.classList.add("due-soon-row");
+  }
+}
+    
+if (ticket.STATUS_ID === 2) {
+  if (diffDays < 0) overdueAssigned++;
+  else if (diffDays <= 7 && diffDays >= 0) dueSoonAssigned++;
+}
+    let priorityClass = "";
+    switch (ticket.PRIORITY_ID) {
+      case 1: priorityClass = "priority-low"; break;
+      case 2: priorityClass = "priority-medium"; break;
+      case 3: priorityClass = "priority-high"; break;
+      case 4: priorityClass = "priority-critical"; break;
+    }
+
+    row.innerHTML = `
+      <td>${ticket.TICKET_ID}</td>
+      <td>${ticket.UPDATED_AT || '-'}</td>
+<td>${ticket.NAME || 'User'}</td>
+<td>${ticket.AGENT_NAME || '-'}</td>
+      <td>${ticket.TITLE}</td>
+      <td>${ticket.STATUS}</td>
+      <td>${ticket.LAST_REPLIER || '-'}</td>
+      <td>${ticket.DUE_DATE ? new Date(ticket.DUE_DATE).toLocaleDateString() : '-'}</td>
+      <td class="${priorityClass}">${['Low', 'Medium', 'High', 'Critical'][ticket.PRIORITY_ID - 1]}</td>
+    `;
+
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => {
+      window.location.href = `ticketview.html?ticketId=${ticket.TICKET_ID}`;
+    });
+
+    ticketList.appendChild(row);
+  });
+
+  // Update count badges
+  document.getElementById("open-count").innerText = count.open;
+  document.getElementById("assigned-count").innerText = count.assigned;
+  document.getElementById("due-count").innerText = count.due;
+  document.getElementById("overdue-count").innerText = count.overdue;
+  document.getElementById("resolved-count").innerText = count.resolved;
+  document.getElementById("closed-count").innerText = count.closed;
+
+
+document.getElementById("overdueCount").textContent = overdueAssigned;
+document.getElementById("dueSoonCount").textContent = dueSoonAssigned;
+document.getElementById("openCount").textContent = count.open;
+const hasAttention = overdueAssigned > 0 || dueSoonAssigned > 0 || count.open > 0;
+document.getElementById("attentionBox").style.display = hasAttention ? "block" : "none";
+
+}
+
+    document.getElementById('nav-tickets').classList.add('active');
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+
+    const filterType = btn.dataset.type || btn.innerText.toLowerCase().split(" ")[0];
+    renderTickets(filterType);
+  });
+});
+
+  </script>
+</body>
+</html>

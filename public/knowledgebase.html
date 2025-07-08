@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Knowledge Base</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    .kb-search { margin-bottom: 1em; }
+    .kb-entry { border: 1px solid #ccc; border-radius: 10px; padding: 15px; margin-bottom: 15px; }
+    .kb-entry h3 { margin: 0 0 5px; }
+    .kb-entry p { margin: 5px 0; }
+    .solution { background: #f5f5f5; padding: 10px; border-left: 5px solid #4CAF50; }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+      <li><a id="nav-tickets" class="nav-link"><span>📋</span> Tickets</a></li>
+      <li><a href="templates.html" class="nav-link" id="nav-templates"><span>📄</span> Templates</a></li>
+      <li><a href="knowledgebase.html" class="nav-link" id="nav-kb"><span>📚</span> Knowledgebase</a></li>
+      <li><a href="categories.html" class="nav-link" id="nav-categories"><span>📂</span> Categories</a></li>
+<li id="nav-team-li"><a href="team.html" class="nav-link" id="nav-team"><span>👥</span> Team</a></li>            
+      <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
+      <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+      <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+    </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1>Knowledge Base</h1>
+      </header>
+
+      <div class="kb-search">
+        <input type="text" id="searchBox" placeholder="Search problems or keywords..." style="width: 100%; padding: 8px;" />
+      </div>
+
+      <div id="kbContainer"></div>
+    </main>
+  </div>
+
+  <script>
+    let allArticles = [];
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const response = await fetch('/api/me', { credentials: 'include' });
+      if (!response.ok) throw new Error("User not authenticated");
+
+      const user = await response.json();
+const navTeamLi = document.getElementById("nav-team-li");
+      const navTickets = document.getElementById('nav-tickets');
+      if (user.role_id === 1) {
+        navTickets.href = 'admin_dashboard.html';
+          navTeamLi.style.display = "list-item";
+      } else if (user.role_id === 2) {
+        navTickets.href = 'agent_dashboard.html';
+          navTeamLi.style.display = "list-item";
+      } else {
+        navTickets.href = 'customer_dashboard.html';
+        navTeamLi.style.display = "none";
+      }
+
+    } catch (err) {
+      console.error("🔒 Could not fetch user info, please login again", err);
+      // Optional: redirect to login
+      window.location.href = 'signin.html';
+    }
+    try{
+        const res = await fetch("http://localhost:3000/api/knowledgebase");
+        if (!res.ok) throw new Error("Failed to fetch knowledge base");
+        allArticles = await res.json();
+        renderKB(allArticles);
+      } catch (err) {
+        console.error(err);
+        document.getElementById("kbContainer").innerText = "Unable to load knowledge base.";
+      }
+
+      document.getElementById("searchBox").addEventListener("input", e => {
+        const keyword = e.target.value.toLowerCase();
+        const filtered = allArticles.filter(article =>
+          article.TITLE.toLowerCase().includes(keyword) ||
+          article.PROBLEM_DESC.toLowerCase().includes(keyword) ||
+          article.SOLUTION_DESC.toLowerCase().includes(keyword)
+        );
+        renderKB(filtered);
+      });
+    });
+
+    function renderKB(articles) {
+      const container = document.getElementById("kbContainer");
+      container.innerHTML = "";
+
+      if (articles.length === 0) {
+        container.innerHTML = "<p>No matching articles found.</p>";
+        return;
+      }
+
+      articles.forEach(article => {
+        const entry = document.createElement("div");
+        entry.className = "kb-entry";
+
+        entry.innerHTML = `
+          <h3>${article.TITLE}</h3>
+          <p><strong>Category:</strong> ${article.CATEGORY}</p>
+          <p>${article.PROBLEM_DESC}</p>
+          <div class="solution"><strong>Solution:</strong><br>${article.SOLUTION_DESC}</div>
+        `;
+
+        container.appendChild(entry);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Help Desk - Choose Role</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="card">
+    <h1>Welcome to Help Desk</h1>
+    <p>Select your role to continue:</p>
+    <button class="btn" onclick="selectRole('admin')">admin</button>
+    <button class="btn" onclick="selectRole('agent')">agent</button>
+    <button class="btn" onclick="selectRole('customer')">customer</button>
+  </div>
+
+  <script>
+    function selectRole(role) {
+      window.location.href = `signin.html?role=${role}`;
+    }
+  </script>
+</body>
+</html>

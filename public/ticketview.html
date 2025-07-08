@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Help Desk Ticket</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Ticket Details</h2>
+      <ul>
+        <li>Status: <select id="statusSelect"><option>Loading...</option></select></li>
+        <li>Priority: <select id="prioritySelect"><option>Loading...</option></select></li>
+        <li>Assigned to: <select id="assignedToSelect"><option>Loading...</option></select></li>
+        <li>Replies: <span id="replyCount">0</span></li>
+        <li>Last updated: <span id="updatedAt">Loading...</span></li>
+<li>Due date: <input type="date" id="dueDateInput" /></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <section class="ticket-header">
+        <h1 id="ticketTitle">Loading...</h1>
+        <p><strong>From:</strong> <span id="ticketFrom">Loading...</span></p>
+        <p><strong>Custom Field:</strong> <span id="customField">Loading...</span></p>
+      </section>
+      <section class="message-thread" id="messageThread">
+ <div id="comments-container" class="comments-section">
+</div>
+      </section>
+      <section class="reply-box">
+        <div class="toolbar">
+          <button onclick="format('bold')"><b>B</b></button>
+          <button onclick="format('italic')"><i>I</i></button>
+          <button onclick="format('underline')"><u>U</u></button>
+          <select id="canned">
+            <option value="" disabled selected>Canned responses</option>
+            <option value="Thank you!">Thank you!</option>
+            <option value="We will look into this.">We will look into this.</option>
+            <option value="We will get back to you shortly!">We will get back to you shortly!</option>
+          </select>
+        </div>
+        <div class="editor" contenteditable="true"></div>
+        <div class="options">
+          <label id="timeWorked">Time worked: <input type="text" id="timeWorkedInput" value="00:00:00" /></label>
+          <label><input type="checkbox" /> Attach signature</label>
+          <label><input type="checkbox" /> Don’t send email</label>
+        </div>
+        <div class="attachments-container" id="attachments-container">
+          <input type="file" id="replyFileInput" hidden multiple />
+          <div id="fileList" class="file-list"></div>
+        </div>
+        <div class="submit-buttons">
+          <button onclick="document.getElementById('replyFileInput').click()">Add File</button>
+          <button onclick="submit()">Submit</button>
+          <button id="saveTimeBtn">Save Time</button>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const statusSelect = document.getElementById("statusSelect");
+const prioritySelect = document.getElementById("prioritySelect");
+let currentUser = null;
+let previousStatus = null; // Declare globally
+let totalSeconds = 0;
+let timeInterval;
+function startTimer(initialTime) {
+  if (!initialTime || typeof initialTime !== 'string' || !/^\d{2}:\d{2}:\d{2}$/.test(initialTime)) {
+    initialTime = "00:00:00";
+  }
+  const [hours, minutes, seconds] = initialTime.split(':').map(Number);
+  totalSeconds = hours * 3600 + minutes * 60 + seconds;
+  timeInterval = setInterval(() => {
+    totalSeconds++;
+    const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const secs = String(totalSeconds % 60).padStart(2, '0');
+    const formatted = `${hrs}:${mins}:${secs}`;
+    document.getElementById('timeWorkedInput').value = formatted;
+    const ticketId = getTicketIdFromURL();
+    if (ticketId) {
+      localStorage.setItem(`timeWorked_${ticketId}`, formatted);
+    }
+  }, 1000);
+}
+document.getElementById('saveTimeBtn').addEventListener('click', async () => {
+  if (currentUser?.role_id === 3) return;
+  const ticketId = getTicketIdFromURL();
+  const timeWorked = document.getElementById('timeWorkedInput').value;
+  try {
+    const res = await fetch(`http://localhost:3000/api/ticket/${ticketId}/timeworked`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ timeWorked })
+    });
+    if (res.ok) {
+      alert("✅ Time worked saved!");
+    } else {
+      const err = await res.json();
+      alert("❌ Failed to save time: " + err.message);
+    }
+  } catch (error) {
+    console.error("Error saving time worked:", error);
+    alert("❌ Could not save time worked.");
+}
+});
+window.addEventListener('beforeunload', (event) => {
+  if (currentUser?.role_id !== 3) {
+  clearInterval(timeInterval);
+  const ticketId = getTicketIdFromURL();
+  const timeWorked = document.getElementById('timeWorkedInput')?.value;
+  if (!ticketId || !timeWorked) return;
+    const data = new Blob([JSON.stringify({ timeWorked })], { type: 'application/json' });
+navigator.sendBeacon(`/api/ticket/${ticketId}/timeworked`, data);
+   event.preventDefault();
+   event.returnValue = '';
+}});
+const fileInput = document.getElementById('replyFileInput');
+const fileList = document.getElementById('fileList');
+fileInput.addEventListener('change', () => {
+  fileList.innerHTML = '';
+  if (fileInput.files.length === 0) {
+    fileList.textContent = 'No files selected.';
+    return;
+  }
+  const ul = document.createElement('ul');
+  for (const file of fileInput.files) {
+    const li = document.createElement('li');
+    li.textContent = `📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    ul.appendChild(li);
+  }
+  fileList.appendChild(ul);
+});
+ async function fetchLoggedInUser() {
+  try {
+    const res = await fetch('http://localhost:3000/api/me', {
+      credentials: 'include'
+    });
+    if (!res.ok) {
+      throw new Error(`Server returned status ${res.status}`);
+    }
+    const user = await res.json();
+    console.log("User object received:", user);
+if (!user) {
+  console.warn("User not found or session expired");
+  return;
+}
+    return user;
+  } catch (error) {
+    console.error("❌ Error fetching user session:", error);
+    return null;
+  }
+}
+function format(command) {
+  document.execCommand(command, false, null);
+  const buttons = {
+    bold: document.querySelector('button[onclick="format(\'bold\')"]'),
+    italic: document.querySelector('button[onclick="format(\'italic\')"]'),
+    underline: document.querySelector('button[onclick="format(\'underline\')"]')
+  };
+  for (const cmd in buttons) {
+    if (buttons[cmd]) {
+      if (document.queryCommandState(cmd)) {
+        buttons[cmd].classList.add('active');
+      } else {
+        buttons[cmd].classList.remove('active');
+      }
+    }
+  }
+}
+async function submit() {
+  const editorContent = document.querySelector(".editor").innerHTML.trim();
+  const ticketId = getTicketIdFromURL();
+  if (!editorContent) {
+    alert("Reply content is empty!");
+    return;
+  }
+  const timeWorked = document.getElementById('timeWorkedInput').value.trim();
+  const files = document.getElementById('replyFileInput').files;
+  const formData = new FormData();
+  formData.append("ticketId", ticketId);
+  formData.append("commentText", editorContent);
+  formData.append("timeWorked", timeWorked);
+  for (let i = 0; i < files.length; i++) {
+    formData.append("attachments", files[i]);
+  }
+  try {
+    const res = await fetch('http://localhost:3000/api/ticket/comment', {
+      method: 'POST',
+      credentials: 'include',
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Reply and attachments submitted!");
+      location.reload();
+    } else {
+      alert("❌ Failed to submit: " + data.message);
+    }
+  } catch (err) {
+    console.error("❌ Error submitting comment:", err);
+    alert("Something went wrong.");
+  }
+}
+    function getTicketIdFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ticketId');
+    }
+    async function fetchTicketData(ticketId, currentUser) {
+      try {
+        const res = await fetch(`http://localhost:3000/ticket/${ticketId}`);
+        if (!res.ok) throw new Error('Ticket not found');
+        const ticket = await res.json();
+        document.getElementById("ticketTitle").textContent = ticket.TITLE || "Untitled";
+        document.getElementById("ticketFrom").textContent = ticket.CREATED_BY_NAME || "Unknown User";
+        document.getElementById("customField").textContent = ticket.CATEGORY_NAME || "N/A";
+if (ticket.DUE_DATE) {
+  const dateInput = document.getElementById("dueDateInput");
+  const formatted = new Date(ticket.DUE_DATE).toISOString().split('T')[0]; // yyyy-mm-dd
+  dateInput.value = formatted;
+}
+const assignedSelect = document.getElementById("assignedToSelect");
+if (assignedSelect) {
+  assignedSelect.value = ticket.ASSIGNED_TO || '';
+}
+        document.getElementById("updatedAt").textContent = new Date(ticket.UPDATED_AT).toLocaleString();
+        const initialTime = ticket.TIME_WORKED || '00:00:00';
+        document.getElementById('timeWorkedInput').value = initialTime;
+let statusOptions = '';
+if (currentUser.role_id === 3) {
+  if (ticket.STATUS_ID == 3) {
+    statusOptions = `
+      <option value="3" selected>Resolved</option>
+      <option value="4">Closed</option>
+    `;
+    statusSelect.disabled = false;
+    statusSelect.classList.remove('no-arrow');
+  }else {
+  statusOptions = `
+    <option value="1" ${ticket.STATUS_ID == 1 ? 'selected' : ''}>Open</option>
+    <option value="2" ${ticket.STATUS_ID == 2 ? 'selected' : ''}>In Progress</option>
+    <option value="3" ${ticket.STATUS_ID == 3 ? 'selected' : ''}>Resolved</option>
+    <option value="4" ${ticket.STATUS_ID == 4 ? 'selected' : ''}>Closed</option>
+  `;
+}}else {
+  statusOptions = `
+    <option value="1" ${ticket.STATUS_ID == 1 ? 'selected' : ''}>Open</option>
+    <option value="2" ${ticket.STATUS_ID == 2 ? 'selected' : ''}>In Progress</option>
+    <option value="3" ${ticket.STATUS_ID == 3 ? 'selected' : ''}>Resolved</option>
+    <option value="4" ${ticket.STATUS_ID == 4 ? 'selected' : ''}>Closed</option>
+  `;
+}
+statusSelect.innerHTML = statusOptions;
+previousStatus = parseInt(statusSelect.value);
+        prioritySelect.innerHTML = `
+          <option value="1" ${ticket.PRIORITY_ID == 1 ? 'selected' : ''}>Low</option>
+          <option value="2" ${ticket.PRIORITY_ID == 2 ? 'selected' : ''}>Medium</option>
+          <option value="3" ${ticket.PRIORITY_ID == 3 ? 'selected' : ''}>High</option>
+          <option value="4" ${ticket.PRIORITY_ID == 4 ? 'selected' : ''}>Critical</option>
+        `;
+const messageThread = document.getElementById("messageThread");
+const oldMessages = messageThread.querySelectorAll(".message");
+oldMessages.forEach(msg => msg.remove());
+        (ticket.MESSAGES || []).forEach(msg => {
+          const div = document.createElement("div");
+          div.classList.add("message", msg.SENDER_ROLE === "agent" ? "agent" : "customer");
+          div.innerHTML = `<p>${msg.CONTENT}</p><span>— ${msg.SENDER_NAME}</span>`;
+          messageThread.appendChild(div);
+        });
+if (document.getElementById('replyCount')) {
+  document.getElementById('replyCount').textContent = replyCount;
+}
+    return ticket;
+      } catch (err) {
+        alert("Error loading ticket: " + err.message);
+      }
+    }
+async function fetchComments(ticketId, currentUser) {
+  try {
+    const res = await fetch(`/api/ticket/${ticketId}/comments`);
+    const comments = await res.json();
+    const commentsContainer = document.getElementById('comments-container');
+    if (!commentsContainer) {
+      console.error("❌ Could not find comments container in DOM.");
+      return;
+    }
+    commentsContainer.innerHTML = '';
+    let replyCount = 0;
+    comments.forEach(comment => {
+      const commenterId = comment.COMMENTER_ID || comment.commenter_id;
+      const commenterName = comment.COMMENTER_NAME || comment.commenter_name || 'Unknown';
+      const isOwnComment = commenterId === currentUser.userId;
+      const roleId = parseInt(comment.COMMENTER_ROLE_ID);
+      if (!isOwnComment) replyCount++;
+      let roleClass = 'customer-comment';
+      if (isOwnComment) roleClass = 'own-comment';
+      else if (roleId === 2) roleClass = 'agent-comment';
+      else if (roleId === 3) roleClass = 'customer-comment';
+      let attachmentsHTML = '';
+      if (Array.isArray(comment.ATTACHMENTS) && comment.ATTACHMENTS.length > 0) {
+        attachmentsHTML = `
+          <div class="comment-attachments">
+            ${comment.ATTACHMENTS.map(att => `
+              <div>
+                📎 <a href="/${att.FILE_PATH.replace(/\\/g, '/')}" target="_blank" download>
+                  ${att.FILE_NAME}
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      const commentHTML = `
+        <div class="comment ${roleClass}">
+          <div class="comment-author">${commenterName}</div>
+          <div class="comment-text">${comment.COMMENT_TEXT || ''}</div>
+          ${attachmentsHTML}
+          <div class="comment-time">${new Date(comment.COMMENTED_AT || comment.commented_at).toLocaleString()}</div>
+        </div>
+      `;
+      commentsContainer.innerHTML += commentHTML;
+    });
+    const replyCountSpan = document.getElementById('replyCount');
+    if (replyCountSpan) {
+      replyCountSpan.textContent = replyCount;
+    }
+  } catch (err) {
+    console.error("❌ Error fetching comments:", err);
+    alert("Failed to load comments");
+  }
+}
+async function fetchAttachments(ticketId) {
+  const response = await fetch(`/api/ticket/${ticketId}/attachments`);
+  const attachments = await response.json();
+  const container = document.getElementById('attachments-container');
+  container.innerHTML = '';
+  if (attachments.length === 0) {
+    container.innerHTML = '<p>No attachments</p>';
+    return;
+  }
+  attachments.forEach(att => {
+    const link = document.createElement('a');
+    link.href = `/${att.FILE_PATH.replace(/\\/g, '/')}`;
+link.innerHTML = `
+  <span style="margin-right: 8px;">📎</span>
+  <span style="font-weight: 500;">${att.FILE_NAME}</span>
+`;
+    link.target = '_blank';
+    link.download = att.FILE_NAME;
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(link);
+    container.appendChild(wrapper);
+  });
+}
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = await fetchLoggedInUser();
+  const cannedSelect = document.getElementById("canned");
+  const editor = document.querySelector(".editor");
+  cannedSelect.addEventListener("change", () => {
+    const cannedText = cannedSelect.value;
+    if (cannedText) {
+      editor.innerHTML += `<p>${cannedText}</p>`;
+      cannedSelect.selectedIndex = 0;
+    }
+  });
+  const ticketId = getTicketIdFromURL();
+  if (!ticketId) {
+    alert("No ticket ID provided in URL");
+    return;
+  }
+statusSelect.addEventListener("change", async () => {
+const newStatus = parseInt(statusSelect.value);
+  const ticketId = getTicketIdFromURL();
+  if (currentUser.role_id !== 1 && previousStatus !== 1 && newStatus === 1) {
+    alert("⚠️ You can’t revert this ticket to ‘Open’. Please contact an admin.");
+    statusSelect.value = previousStatus;   // 🔄 roll back UI
+    return;
+  }
+    // 🧠 Customer trying to close a Resolved ticket
+  if (previousStatus === 3 && newStatus === 4) {
+    const confirmClose = confirm("Once you close this ticket, you cannot change it back to Resolved. Are you sure?");
+    if (!confirmClose) {
+      statusSelect.value = previousStatus;
+      return;
+    } else {
+
+      previousStatus = newStatus; // Update previous status to Closed
+    }
+  }
+if (currentUser.role_id !== 1 && (
+  (previousStatus === 4 && newStatus === 3) ||
+  (previousStatus === 4 && newStatus === 2) ||
+  (previousStatus === 4 && newStatus === 1)
+)) {
+  alert("❌ You cannot change a closed ticket's status. Please contact support.");
+  statusSelect.value = previousStatus;
+  return;
+}
+
+if (
+  currentUser.role_id !== 1 && 
+  (
+    (previousStatus === 1 && newStatus === 2) ||
+    (previousStatus === 1 && newStatus === 3) ||
+    (previousStatus === 1 && newStatus === 4)
+  )
+) {
+  const confirmed = confirm(
+    "Changing status to " + newStatus + " will automatically assign this ticket to you. Do you want to continue?"
+  );
+  if (!confirmed) {
+    statusSelect.value = previousStatus;
+    return;
+  }
+}
+
+  try {
+    const res = await fetch(`http://localhost:3000/api/ticket/${ticketId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ status: newStatus })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert("❌ Failed to update status: " + err.message);
+    } else {
+      alert("✅ Status updated!");
+    }
+  } catch (err) {
+    console.error("❌ Error updating status:", err);
+    alert("Error updating status.");
+  }
+  });
+prioritySelect.addEventListener("change", async () => {
+  const newPriority = prioritySelect.value;
+  const ticketId = getTicketIdFromURL();
+  try {
+    const res = await fetch(`http://localhost:3000/api/ticket/${ticketId}/priority`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ priority: newPriority })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert("❌ Failed to update priority: " + err.message);
+    } else {
+      alert("✅ Priority updated!");
+    }
+  } catch (err) {
+    console.error("❌ Error updating priority:", err);
+    alert("Error updating priority.");
+  }
+});
+document.getElementById('dueDateInput').addEventListener('change', async function () {
+  const newDueDate = this.value;
+  const ticketId = getTicketIdFromURL();
+  try {
+    const res = await fetch(`http://localhost:3000/api/ticket/${ticketId}/duedate`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ dueDate: newDueDate })
+    });
+
+    if (!res.ok) throw new Error("❌ Failed to update due date");
+    alert("✅ Due date updated successfully!");
+  } catch (err) {
+    console.error("Error updating due date:", err);
+    alert("❌ Could not update due date.");
+  }
+});
+
+  const ticket = await fetchTicketData(ticketId, currentUser);
+  if (!ticket) return;
+if (currentUser.role_id === 1) {
+  try {
+    const res = await fetch('/api/agents');
+    if (!res.ok) throw new Error('Agent list not found');
+    const agents = await res.json();
+    const select = document.getElementById('assignedToSelect');
+select.innerHTML = agents.map(a => 
+  `<option value="${a.USER_ID}" ${a.USER_ID === ticket.ASSIGNED_TO ? 'selected' : ''}>${a.NAME}</option>`
+).join('');
+  } catch (err) {
+    console.error("❌ Error fetching agent list:", err);
+  }
+}
+document.getElementById('assignedToSelect').addEventListener('change', async function () {
+  const assignedTo = this.value;
+  const ticketId = new URLSearchParams(window.location.search).get("ticketId");
+
+  try {
+    const res = await fetch(`/api/ticket/${ticketId}/assignee`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ assignedTo })
+    });
+
+    if (!res.ok) throw new Error("Assignment failed");
+    const data = await res.json();
+    console.log("✅ Agent assigned:", data.message);
+  } catch (err) {
+    console.error("❌ Agent assign error:", err);
+  }
+});
+
+  const savedTime = localStorage.getItem(`timeWorked_${ticketId}`);
+  let initialTime = savedTime || ticket.TIME_WORKED || '00:00:00';
+  try {
+    console.log("Logged-in user is:", currentUser);
+    console.log("User role id is:", currentUser?.role_id);
+    if (!currentUser || !currentUser.userId) {
+      console.warn("User not found or session expired");
+      return;
+    }
+    await fetchTicketData(ticketId, currentUser);
+    if (savedTime) {
+      document.getElementById('timeWorkedInput').value = savedTime;
+    }
+    if (currentUser.role_id === 2 || currentUser.role_id === 1) {
+  startTimer(savedTime);
+}
+    await fetchComments(ticketId, currentUser);
+      if (currentUser.role_id === 3) {
+      document.getElementById('prioritySelect').disabled = true;
+      document.getElementById('timeWorked').style.display = 'none';
+      document.getElementById('dueDate').style.display = 'none';
+      document.getElementById('dueDateInput').disabled = true;
+      document.getElementById('assignedToInput').readOnly = true;
+      document.getElementById('prioritySelect').classList.add('no-arrow');
+      document.getElementById('saveTimeBtn').disabled = true;
+      document.getElementById('saveTimeBtn').style.display = 'none';
+    }
+
+    if (currentUser.role_id === 3 && ticket.STATUS_ID !== 3) {
+  statusSelect.disabled = true;
+  statusSelect.classList.add('no-arrow');
+} else if (currentUser.role_id === 3 && ticket.STATUS_ID === 3) {
+  statusSelect.disabled = false;
+  statusSelect.classList.remove('no-arrow');
+}
+
+  } catch (err) {
+    console.error("Main load error:", err);
+  }
+});
+  </script>
+</body>
+</html>

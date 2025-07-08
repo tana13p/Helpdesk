@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Agent Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+  <aside class="sidebar">
+    <h2>Help Desk</h2>
+    <ul>
+      <li><a href="dashboard.html" class="nav-link" id="nav-tickets"><span>📋</span> Tickets</a></li>
+      <li><a href="templates.html" class="nav-link" id="nav-templates"><span>📄</span> Templates</a></li>
+      <li><a href="knowledgebase.html" class="nav-link" id="nav-kb"><span>📚</span> Knowledgebase</a></li>
+      <li><a href="categories.html" class="nav-link" id="nav-categories"><span>📂</span> Categories</a></li>
+      <li><a href="team.html" class="nav-link" id="nav-team"><span>👥</span> Team</a></li>
+      <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
+      <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+      <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <header class="dashboard-header">
+      <!-- <button class="btn create-ticket-btn">Create New Ticket</button> -->
+      <div class="user-info">👤 Klemen ▾</div>
+    </header>
+
+    <section class="ticket-summary">
+  <button class="filter-btn active" data-type="open">Open Tickets <span class="badge" id="open-count">0</span></button>
+  <button class="filter-btn" data-type="assigned">Assigned to Me <span class="badge" id="assigned-count">0</span></button>
+  <button class="filter-btn due" data-type="due">Due Soon <span class="badge" id="dueSoonCount">0</span></button>
+  <button class="filter-btn overdue" data-type="overdue">Overdue <span class="badge red" id="overdueCount">0</span></button>
+  <button class="filter-btn" data-type="resolved">Resolved <span class="badge" id="resolved-count">0</span></button>
+  <button class="filter-btn" data-type="closed">Closed <span class="badge" id="closed-count">0</span></button>
+<button class="filter-btn" data-type="sla-nearing">SLA Nearing<span class="badge" id="slaNearingCount">0</span></button>
+<button class="filter-btn" data-type="sla-breached">SLA Breached<span class="badge" id="slaBreachedCount">0</span></button>
+</section>
+    <section class="ticket-table" id="ticketTableSection">
+      <table>
+        <thead>
+          <tr>
+            <th>Tracking ID</th>
+            <th>Updated</th>
+            <th>Name</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Last Replier</th>
+            <th>Due Date</th>
+            <th>Priority</th>
+            <th>Response Due</th>
+            <th>Resolution Due</th>
+            <th>Category</th>
+            <th>Subcategory</th>
+          </tr>
+        </thead>
+        <tbody id="ticketList">
+        </tbody>
+      </table>
+    </section>
+    <div id="attentionBox" class="attention-box">
+      <strong>⚠️ Attention:</strong>
+      <p>You have <span id="slaBreachedCount">0</span> ticket(s) with SLA breached</p>
+      <p>You have <span id="slaNearingCount">0</span> ticket(s) with SLA nearing deadline</p>
+      <p>You have <span id="overdueCount">0</span> overdue ticket(s)</p>
+      <p>You have <span id="dueSoonCount">0</span> ticket(s) due soon</p>
+      <p>There are <span id="openCount">0</span> open ticket(s) that need attention</p>
+    </div>
+  </main>
+</div>
+
+<script>
+    let userId = null;  // global userId
+      window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/me', {
+        credentials: 'include'
+      });
+    const data = await response.json();
+
+      if (response.ok) {
+        console.log("Logged-in user ID:", data.userId);
+        userId = data.userId;
+        loadTickets(userId); // Load tickets once userId is available
+
+    } else {
+        alert('Not logged in. Redirecting to login page.');
+        window.location.href = 'signin.html';
+      }
+    } catch (err) {
+      console.error('Error fetching user info:', err);
+    }
+    console.log("Logged-in user ID:", userId);
+  });
+
+const ticketList = document.getElementById("ticketList");
+let allTickets = [];
+async function loadTickets(agentId) {
+  if (!agentId) {
+    alert("Agent ID not available.");
+    return;
+  }
+  const res = await fetch(`http://localhost:3000/assigned-tickets/${agentId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include"
+  });
+  if (!res.ok) {
+    alert("Error fetching tickets.");
+    return;
+  }
+  allTickets = await res.json();
+  renderTickets("open");  // default tab
+}
+
+function renderTickets(filterType) {
+  ticketList.innerHTML = "";
+  const now = new Date();
+  let count = {
+    open: 0,
+    assigned: 0,
+    due: 0,
+    overdue: 0,
+    resolved: 0,
+    closed: 0
+  };
+
+  const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const filtered = allTickets.filter(ticket => {
+    let isDueValid = false;
+    let diffDays = null;
+
+    if (ticket.DUE_DATE) {
+      const dueDate = new Date(ticket.DUE_DATE);
+      if (!isNaN(dueDate)) {
+        isDueValid = true;
+        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        diffDays = Math.floor((dueDateOnly - todayOnly) / (1000 * 60 * 60 * 24));
+        if (diffDays < 7 && diffDays >= 0) count.due++;
+        else if (diffDays < 0) count.overdue++;
+      }
+    }
+
+    if (ticket.STATUS_ID === 1) count.open++;
+    if (ticket.ASSIGNED_TO == userId) count.assigned++;
+    if (ticket.STATUS_ID === 3) count.resolved++;
+    if (ticket.STATUS_ID === 4) count.closed++;
+
+    switch (filterType) {
+      case "open": return ticket.STATUS_ID === 1;
+      case "assigned": return ticket.ASSIGNED_TO == userId;
+      case "due": return isDueValid && diffDays < 7 && diffDays >= 0 && ticket.ASSIGNED_TO == userId;
+      case "overdue": return isDueValid && diffDays < 0 && ticket.ASSIGNED_TO == userId;
+      case "resolved": return ticket.STATUS_ID === 3 && ticket.ASSIGNED_TO == userId;
+      case "closed": return ticket.STATUS_ID === 4 && ticket.ASSIGNED_TO == userId;
+      case "sla-nearing":
+        return ticket.RESPONSE_DUE && ticket.ASSIGNED_TO == userId &&
+               new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
+               new Date(ticket.RESPONSE_DUE) > now;
+      case "sla-breached":
+        return ticket.RESPONSE_DUE && ticket.ASSIGNED_TO == userId &&
+               new Date(ticket.RESPONSE_DUE) < now;
+      default: return true;
+    }
+  });
+
+  if (filtered.length === 0) {
+    ticketList.innerHTML = "<tr><td colspan='12'>No tickets in this category.</td></tr>";
+  } else {
+    filtered.forEach(ticket => {
+      const row = document.createElement("tr");
+      const now = new Date();
+      const dueDate = ticket.DUE_DATE ? new Date(ticket.DUE_DATE) : null;
+      const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      let diffDays = null;
+      if (dueDate && !isNaN(dueDate)) {
+        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        diffDays = Math.floor((dueDateOnly - todayOnly) / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) row.classList.add("overdue-row");
+        else if (diffDays <= 7) row.classList.add("due-soon-row");
+      }
+
+      if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3) {
+        row.classList.add("sla-breached");
+      } else if (ticket.RESPONSE_DUE &&
+                 new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
+                 new Date(ticket.RESPONSE_DUE) > now &&
+                 ticket.STATUS_ID !== 3) {
+        row.classList.add("sla-nearing");
+      }
+
+      let priorityClass = "";
+      switch (ticket.PRIORITY_ID) {
+        case 1: priorityClass = "priority-low"; break;
+        case 2: priorityClass = "priority-medium"; break;
+        case 3: priorityClass = "priority-high"; break;
+        case 4: priorityClass = "priority-critical"; break;
+      }
+
+      row.innerHTML = `
+        <td>${ticket.TICKET_ID}</td>
+        <td>${ticket.UPDATED_AT ? new Date(ticket.UPDATED_AT).toLocaleString() : '-'}</td>
+        <td>${ticket.NAME || 'User'}</td>
+        <td>${ticket.TITLE}</td>
+        <td>${ticket.STATUS || '-'}</td>
+        <td>${ticket.DUE_DATE ? new Date(ticket.DUE_DATE).toLocaleString() : '-'}</td>
+        <td class="${priorityClass}">${['Low', 'Medium', 'High', 'Critical'][ticket.PRIORITY_ID - 1]}</td>
+        <td>${ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE).toLocaleString() : '-'}</td>
+        <td>${ticket.RESOLUTION_DUE ? new Date(ticket.RESOLUTION_DUE).toLocaleString() : '-'}</td>
+        <td>${ticket.CATEGORY_NAME || '-'}</td>
+        <td>${ticket.SUBCATEGORY_NAME || '-'}</td>
+      `;
+      // Remove the LAST_REPLIER column
+// row.innerHTML += `<td>${ticket.LAST_REPLIER || '-'}</td>`;
+
+      row.style.cursor = "pointer";
+      row.addEventListener("click", () => {
+        window.location.href = `ticketview.html?ticketId=${ticket.TICKET_ID}`;
+      });
+
+      ticketList.appendChild(row);
+    });
+  }
+
+  // Compute attention counts from allTickets (not filtered!)
+  let overdueAssigned = 0;
+  let dueSoonAssigned = 0;
+  let agentSlaBreached = 0;
+  let agentSlaNearing = 0;
+
+  allTickets.forEach(ticket => {
+    const isAssigned = ticket.ASSIGNED_TO == userId;
+
+    // Overdue / Due soon
+    if (ticket.DUE_DATE && isAssigned) {
+      const dueDate = new Date(ticket.DUE_DATE);
+      const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+      const diff = Math.floor((dueDateOnly - todayOnly) / (1000 * 60 * 60 * 24));
+      if (diff < 0) overdueAssigned++;
+      else if (diff < 7 && diff >= 0) dueSoonAssigned++;
+    }
+
+    // SLA status
+    if (ticket.RESPONSE_DUE && ticket.STATUS_ID !== 3 && isAssigned) {
+      const responseDue = new Date(ticket.RESPONSE_DUE);
+      if (responseDue < now) agentSlaBreached++;
+      else if (responseDue - now <= 2 * 60 * 60 * 1000 && responseDue > now) agentSlaNearing++;
+    }
+  });
+
+  // Update count badges
+  document.getElementById("open-count").innerText = count.open;
+  document.getElementById("assigned-count").innerText = count.assigned;
+  document.getElementById("resolved-count").innerText = count.resolved;
+  document.getElementById("closed-count").innerText = count.closed;
+  document.getElementById("overdueCount").textContent = overdueAssigned;
+  document.getElementById("dueSoonCount").textContent = dueSoonAssigned;
+  document.getElementById("openCount").textContent = count.open;
+  document.getElementById("slaBreachedCount").textContent = agentSlaBreached;
+  document.getElementById("slaNearingCount").textContent = agentSlaNearing;
+
+  const hasAttention =
+    overdueAssigned > 0 ||
+    dueSoonAssigned > 0 ||
+    count.open > 0 ||
+    agentSlaBreached > 0 ||
+    agentSlaNearing > 0;
+  document.getElementById("attentionBox").style.display = hasAttention ? "block" : "none";
+}
+
+document.getElementById('nav-tickets').classList.add('active');
+document.querySelectorAll(".filter-btn").forEach(btn => {
+btn.addEventListener("click", () => {
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const filterType = btn.dataset.type || btn.innerText.toLowerCase().split(" ")[0];
+  renderTickets(filterType);
+});
+});
+  </script>
+</body>
+</html>

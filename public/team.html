@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Knowledge Base</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+      <li><a id="nav-tickets" class="nav-link"><span>📋</span> Tickets</a></li>
+      <li><a href="templates.html" class="nav-link" id="nav-templates"><span>📄</span> Templates</a></li>
+      <li><a href="knowledgebase.html" class="nav-link" id="nav-kb"><span>📚</span> Knowledgebase</a></li>
+      <li><a href="categories.html" class="nav-link" id="nav-categories"><span>📂</span> Categories</a></li>
+            <li><a href="team.html" class="nav-link" id="nav-team"><span>👥</span> Team</a></li>
+      <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
+      <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+      <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+    </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1>Team Info</h1>
+      </header>
+<div id="calendar-container">
+  <div id="calendar-header">
+    <button id="prev-month">⬅️</button>
+    <span id="month-label"></span>
+    <button id="next-month">➡️</button>
+  </div>
+  <div id="calendar-grid"></div>
+</div>
+
+<style>
+  #calendar-container {
+    width: 700px;
+    margin: 20px auto;
+    font-family: sans-serif;
+  }
+
+  #calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  #calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-top: 10px;
+  }
+
+  .calendar-day {
+    padding: 10px;
+    border: 1px solid #ccc;
+    height: 80px;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .unavailable {
+    background-color: #fdd;
+    color: #900;
+    font-size: 0.75em;
+    padding: 2px;
+    border-radius: 4px;
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    overflow: auto;
+    max-height: 40px;
+  }
+</style>
+
+    </main>
+  </div>
+<script>
+let currentDate = new Date();
+
+document.getElementById("prev-month").onclick = () => changeMonth(-1);
+document.getElementById("next-month").onclick = () => changeMonth(1);
+
+function changeMonth(offset) {
+  currentDate.setMonth(currentDate.getMonth() + offset);
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const grid = document.getElementById("calendar-grid");
+  const label = document.getElementById("month-label");
+  grid.innerHTML = "";
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  label.textContent = `${currentDate.toLocaleString("default", { month: "long" })} ${year}`;
+
+  for (let i = 0; i < firstDay; i++) {
+    grid.innerHTML += `<div></div>`;
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const div = document.createElement("div");
+    div.classList.add("calendar-day");
+    div.innerHTML = `<strong>${day}</strong>`;
+    div.dataset.date = dateStr;
+
+    div.onclick = () => {
+      const reason = prompt(`Mark ${dateStr} as unavailable. Optional reason?`);
+      if (reason !== null) {
+        fetch('/api/unavailability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: dateStr, reason: reason.trim() })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            fetchUnavailability(); // refresh
+          } else {
+            alert(data.message || 'Error');
+          }
+        });
+      }
+    };
+
+    grid.appendChild(div);
+  }
+
+  fetchUnavailability();
+}
+
+function fetchUnavailability() {
+  fetch('/api/unavailability')
+    .then(res => res.json())
+    .then(data => {
+      if (!Array.isArray(data)) {
+        console.error('Expected array but got:', data);
+        return;
+      }
+
+      const map = {};
+      data.forEach(entry => {
+        if (!map[entry.start]) map[entry.start] = [];
+        map[entry.start].push(`${entry.username}: ${entry.title}`);
+      });
+
+      document.querySelectorAll('.calendar-day').forEach(div => {
+        const date = div.dataset.date;
+        if (map[date]) {
+          const badge = document.createElement("div");
+          badge.className = "unavailable";
+          badge.innerHTML = map[date].join("<br>");
+          div.appendChild(badge);
+        }
+      });
+    })
+    .catch(err => console.error("Fetch failed", err));
+}
+
+renderCalendar();
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      try {
+        const response = await fetch('/api/me', { credentials: 'include' });
+      if (!response.ok) throw new Error("User not authenticated");
+
+      const user = await response.json();
+
+      const navTickets = document.getElementById('nav-tickets');
+      if (user.role_id === 1) {
+        navTickets.href = 'admin_dashboard.html';
+      } else if (user.role_id === 2) {
+        navTickets.href = 'agent_dashboard.html';
+      } else {
+        navTickets.href = 'customer_dashboard.html';
+      }
+
+    } catch (err) {
+      console.error("🔒 Could not fetch user info, please login again", err);
+      window.location.href = 'signin.html';
+    }
+    });
+
+  </script>
+</body>
+</html>

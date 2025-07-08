@@ -1,0 +1,480 @@
+/* styles.css */
+
+/* Base Reset and Body */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #8F8C8C, #C4C4C4);
+  min-height: 100vh;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* Card Container */
+.card {
+  background-color: white;
+  padding: 40px;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 15px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Title */
+.card h1 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #05386B;
+}
+
+/* Subheading */
+.card p {
+  font-size: 18px;
+  color: #444;
+  margin-bottom: 30px;
+}
+
+/* Label and Input Field */
+.input-group {
+  margin-bottom: 25px;
+  text-align: left;
+}
+
+.label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.input-box {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  transition: 0.2s border;
+}
+
+.input-box:focus {
+  outline: none;
+  border-color: #05386B;
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 15px;
+  background-color: #05386B;
+  color: white;
+  font-size: 18px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.btn:hover {
+  background-color: #032a4a;
+}
+
+/* Link Text */
+.link-text {
+  margin-top: 20px;
+  font-size: 14px;
+  color: #05386B;
+  cursor: pointer;
+}
+
+.link-text a {
+  color: #05386B;
+  text-decoration: underline;
+}
+
+.link-text a:hover {
+  color: #032a4a;
+}
+
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  color: #2a7ae2;
+  font-size: 2.2rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+input[type="text"],
+textarea,
+select {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #f9f9f9;
+  transition: border-color 0.3s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #2a7ae2;
+  outline: none;
+}
+
+.ticket {
+  background: #f1f1f1;
+  border-left: 5px solid #2a7ae2;
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+}
+
+/*  */
+/* Layout */
+.dashboard {
+  display: flex;
+  height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 220px;
+  background-color: #233044;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 10px 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.sidebar li:hover {
+  background-color: #2e3b4e;
+  border-radius: 4px;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  background-color: #f3f6fa;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.create-ticket-btn {
+  background-color: #2a7ae2;
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.user-info {
+  font-weight: 500;
+}
+
+/* Filter Section */
+.ticket-summary {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  border: none;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.filter-btn.active {
+  border: 2px solid #2a7ae2;
+}
+
+.filter-btn.due {
+  background-color: #fef9e7;
+}
+
+.filter-btn.overdue {
+  background-color: #fdecea;
+}
+
+.badge {
+  background-color: #e1e1e1;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 6px;
+}
+
+.badge.red {
+  background-color: #e74c3c;
+  color: white;
+}
+
+/* Table */
+.ticket-table {
+  margin-top: 20px;
+  overflow-x: auto;
+}
+
+.ticket-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.ticket-table th,
+.ticket-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.ticket-table th {
+  background-color: #f2f2f2;
+}
+
+/* Priority Colors */
+.priority-critical {
+  color: red;
+  font-weight: bold;
+}
+.priority-high {
+  color: orange;
+}
+.priority-medium {
+  color: green;
+}
+.priority-low {
+  color: blue;
+}
+
+/* Ticket View Container Layout */
+.ticket-view-container {
+  display: flex;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+/* Sidebar Ticket Info */
+.ticket-sidebar {
+  width: 300px;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ticket-sidebar h2 {
+  font-size: 20px;
+  color: #2a7ae2;
+  margin-bottom: 15px;
+}
+
+.ticket-sidebar ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.ticket-sidebar li {
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+/* Ticket Main Content */
+.ticket-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Ticket Header */
+.ticket-header {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.ticket-header h1 {
+  font-size: 24px;
+  color: #05386B;
+  margin-bottom: 10px;
+}
+
+.ticket-header p {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+/* Messages */
+.message-thread .message {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  margin-bottom: 15px;
+}
+
+.message.customer {
+  background-color: #f1f8ff;
+}
+
+.message.agent {
+  background-color: #fff5f5;
+}
+
+.message p {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.message span {
+  font-size: 13px;
+  color: #555;
+}
+
+/* Reply Box */
+.reply-box {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Toolbar */
+.toolbar {
+  margin-bottom: 10px;
+}
+
+.toolbar button {
+  padding: 6px 10px;
+  margin-right: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #f4f4f4;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.toolbar select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Editor */
+.editor {
+  border: 1px solid #ccc;
+  min-height: 100px;
+  padding: 12px;
+  background: #fdfdfd;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-bottom: 15px;
+}
+
+/* Attachment Box */
+.attachment-box {
+  margin: 15px 0;
+}
+
+.attachment-box button {
+  padding: 8px 14px;
+  background-color: #2a7ae2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.attachment-box button:hover {
+  background-color: #1d5fbf;
+}
+
+/* Options Row */
+.options label {
+  display: block;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+/* Submit Buttons */
+.submit-buttons {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.submit-buttons button {
+  padding: 12px 20px;
+  background-color: #05386B;
+  color: white;
+  font-size: 15px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.submit-buttons button:hover {
+  background-color: #032a4a;
+}

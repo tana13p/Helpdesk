@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Customer Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+  <aside class="sidebar">
+    <h2>Help Desk</h2>
+    <ul>
+      <li><a href="dashboard.html" class="nav-link" id="nav-tickets"><span>📋</span> Tickets</a></li>
+      <li><a href="templates.html" class="nav-link" id="nav-templates"><span>📄</span> Templates</a></li>
+      <li><a href="knowledgebase.html" class="nav-link" id="nav-kb"><span>📚</span> Knowledgebase</a></li>
+      <li><a href="categories.html" class="nav-link" id="nav-categories"><span>📂</span> Categories</a></li>
+      <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
+      <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+      <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+    <header class="dashboard-header">
+      <button class="btn create-ticket-btn">Create New Ticket</button>
+<div class="user-info" id="userName">👤 Loading... ▾</div>
+    </header>
+<section class="ticket-summary">
+    <button class="filter-btn active" data-type="all">All <span class="badge" id="status-all"></span></button>
+  <button class="filter-btn" data-type="in-progress">In Progress <span class="badge" id="status-progress"></span></button>
+  <button class="filter-btn" data-type="resolved">Resolved <span class="badge" id="status-resolved"></span></button>
+  <button class="filter-btn" data-type="closed">Closed <span class="badge" id="status-closed"></span></button>
+</section>
+
+    <section class="ticket-table" id="ticketTableSection">
+      <h2>My Tickets</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tracking ID</th>
+            <th>Updated</th>
+            <th>Subject</th>
+            <th>Status</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody id="ticketList">
+        </tbody>
+      </table>
+    </section>
+        <section class="create-ticket"id="createTicketSection" style="display: none;">
+        <h2>Create New Ticket</h2>
+        <form id="ticketForm">
+        <input type="text" id="title" placeholder="Ticket Title" required />
+        <textarea id="description" rows="4" placeholder="Describe your issue..." required></textarea>
+        <select id="category_id">
+            <option value="">Select Category</option>
+            <option value="1">Software</option>
+            <option value="2">Hardware</option>
+            <option value="3">Network</option>
+        </select>
+        <select id="priority_id">
+            <option value="">Select Priority</option>
+            <option value="1">Low</option>
+            <option value="2">Medium</option>
+            <option value="3">High</option>
+        </select>
+        <button type="submit">Submit Ticket</button>
+        <button id="backToTicketsBtn" style="margin-bottom: 15px;">← Back to My Tickets</button>
+        </form>
+    </section>
+
+  </main>
+</div>
+<script>
+  document.querySelector('.create-ticket-btn').addEventListener('click', () => {
+    document.getElementById('ticketTableSection').style.display = 'none';
+    document.getElementById('createTicketSection').style.display = 'block';
+  });
+
+  document.getElementById('backToTicketsBtn').addEventListener('click', () => {
+    document.getElementById('createTicketSection').style.display = 'none';
+    document.getElementById('ticketTableSection').style.display = 'block';
+  });
+
+  let userId = null;
+let allTickets = [];
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/me', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        userId = data.userId;
+        const name = data.username || data.name || 'User';
+        document.getElementById('userName').textContent = `👤 ${name} ▾`;
+        loadTickets(userId);
+      } else {
+        alert('Not logged in. Redirecting to login page.');
+        window.location.href = 'signin.html';
+      }
+    } catch (err) {
+      console.error('Error fetching user info:', err);
+    }
+
+    document.getElementById('nav-tickets').classList.add('active');
+
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Highlight the active button
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+const filterType = btn.dataset.type;
+    renderTickets(filterType);
+  });
+});
+
+  });
+
+  const form = document.getElementById("ticketForm");
+  const ticketList = document.getElementById("ticketList");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById("title").value,
+      description: document.getElementById("description").value,
+      category_id: document.getElementById("category_id").value,
+      priority_id: document.getElementById("priority_id").value,
+    };
+
+    const res = await fetch("http://localhost:3000/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      alert("Ticket created successfully!");
+      form.reset();
+      loadTickets(userId);
+      document.getElementById("createTicketSection").style.display = "none";
+      document.getElementById("ticketTableSection").style.display = "block";
+    } else {
+      alert("Error creating ticket.");
+    }
+  });
+function renderTickets(filterType = "all") {
+  ticketList.innerHTML = "";
+  const statusMap = {
+    1: 'Open',
+    2: 'In Progress',
+    3: 'Resolved',
+    4: 'Closed'
+  };
+
+  const filtered = allTickets.filter(ticket => {
+    if (filterType === "all") return true;
+    if (filterType === "in-progress") return ticket.STATUS_ID === 2;
+    if (filterType === "resolved") return ticket.STATUS_ID === 3;
+    if (filterType === "closed") return ticket.STATUS_ID === 4;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    ticketList.innerHTML = "<tr><td colspan='5'>No tickets in this category.</td></tr>";
+    return;
+  }
+
+  filtered.forEach(ticket => {
+    const row = document.createElement("tr");
+
+    let priorityClass = '';
+    switch (ticket.PRIORITY_ID) {
+      case 1: priorityClass = 'priority-low'; break;
+      case 2: priorityClass = 'priority-medium'; break;
+      case 3: priorityClass = 'priority-high'; break;
+      case 4: priorityClass = 'priority-critical'; break;
+    }
+
+    row.innerHTML = `
+      <td>${ticket.TICKET_ID}</td>
+      <td>${ticket.UPDATED_AT || '-'}</td>
+      <td>${ticket.TITLE}</td>
+      <td>${statusMap[ticket.STATUS_ID] || 'Unknown'}</td>
+      <td class="${priorityClass}">${['Low', 'Medium', 'High', 'Critical'][ticket.PRIORITY_ID - 1]}</td>
+    `;
+
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => {
+      window.location.href = `ticketview.html?ticketId=${ticket.TICKET_ID}`;
+    });
+
+    ticketList.appendChild(row);
+  });
+}
+
+  async function loadTickets(userId) {
+    if (!userId) {
+      alert("User ID is not available. Please log in.");
+      return;
+    }
+
+    const res = await fetch(`http://localhost:3000/tickets/${userId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include"
+    });
+    if (!res.ok) {
+      alert("Error fetching tickets.");
+      return;
+    }
+
+    const data = await res.json();
+
+allTickets = data; // Save for filtering later
+renderTickets(allTickets); // Initial render
+
+const open = data.filter(t => t.STATUS_ID === 1).length;
+const progress = data.filter(t => t.STATUS_ID === 2).length;
+const resolved = data.filter(t => t.STATUS_ID === 3).length;
+const closed = data.filter(t => t.STATUS_ID === 4).length;
+
+document.getElementById("status-all").innerText = data.length;
+document.getElementById("status-progress").innerText = progress;
+document.getElementById("status-resolved").innerText = resolved;
+document.getElementById("status-closed").innerText = closed;
+
+  }
+
+</script>
+
+</body>
+</html>
