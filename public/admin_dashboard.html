@@ -69,10 +69,44 @@
       <p>There are <span id="dueSoonCount">0</span> ticket(s) due soon</p>
       <p>There are <span id="openCount">0</span> open ticket(s) that need attention</p>
     </div>
+    <section class="create-ticket"id="createTicketSection" style="display: none;">
+      <h2>Create New Ticket</h2>
+      <form id="ticketForm">
+      <input type="text" id="title" placeholder="Ticket Title" required />
+      <textarea id="description" rows="4" placeholder="Describe your issue..." required></textarea>
+      <select id="category_id" required>
+        <option value="">Select Category</option>
+      </select>
+      <select id="subcategory_id" required>
+        <option value="">Select Subcategory</option>
+      </select>
+      <select id="priority_id" required>
+        <option value="">Select Priority</option>
+        <option value="1">Low</option>
+        <option value="2">Medium</option>
+        <option value="3">High</option>
+        <option value="4">Critical</option>
+      </select>
+      <select id="sla_id" required>
+        <option value="">Select SLA Level</option>
+      </select>
+      <div id="slaDetails" style="font-size: 13px; margin-top: 6px; color: #555;"></div>
+      <button type="submit">Submit Ticket</button>
+      <button id="backToTicketsBtn" style="margin-bottom: 15px;">← Back to My Tickets</button>
+      </form>
+    </section>
   </main>
 </div>
 
 <script>
+    document.querySelector('.create-ticket-btn').addEventListener('click', () => {
+    document.getElementById('ticketTableSection').style.display = 'none';
+    document.getElementById('createTicketSection').style.display = 'block';
+  });
+  document.getElementById('backToTicketsBtn').addEventListener('click', () => {
+    document.getElementById('createTicketSection').style.display = 'none';
+    document.getElementById('ticketTableSection').style.display = 'block';
+  });
     let userId = null;  // global userId
       window.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -84,7 +118,6 @@
       if (response.ok) {
   userId = data.userId;
   document.getElementById("userName").textContent = `👤 ${data.username} ▾`;
-  // console.log("✅ Logged-in user ID:", userId);
   setTimeout(() => loadAllTickets(), 0);
 } else {
         alert('Not logged in. Redirecting to login page.');
@@ -95,7 +128,98 @@
     }
     console.log("Logged-in user ID:", userId);
   });
+  const form = document.getElementById("ticketForm");
+async function loadFormDropdowns() {
+  try {
+    // Fetch categories
+    const catRes = await fetch("http://localhost:3000/api/categories", { credentials: "include" });
+    const categories = await catRes.json();
+    const categorySelect = document.getElementById("category_id");
+    categories.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.CATEGORY_ID;
+      opt.textContent = c.NAME;
+      categorySelect.appendChild(opt);
+    });
 
+    // Fetch subcategories
+    const subcatRes = await fetch("http://localhost:3000/api/subcategories", { credentials: "include" });
+    const subcategories = await subcatRes.json();
+
+    const subcategorySelect = document.getElementById("subcategory_id");
+
+    // Filter subcategories based on category selection
+    categorySelect.addEventListener("change", () => {
+      const selectedCat = categorySelect.value;
+      subcategorySelect.innerHTML = `<option value="">Select Subcategory</option>`;
+      subcategories.filter(sc => sc.CATEGORY_ID == selectedCat).forEach(sc => {
+        const opt = document.createElement("option");
+        opt.value = sc.SUBCATEGORY_ID;
+        opt.textContent = sc.NAME;
+        subcategorySelect.appendChild(opt);
+      });
+    });
+
+    // Fetch SLA levels
+    const slaRes = await fetch("http://localhost:3000/api/sla-levels", { credentials: "include" });
+    const slaLevels = await slaRes.json();
+    const slaSelect = document.getElementById("sla_id");
+    const slaDetailsDiv = document.getElementById("slaDetails");
+
+    slaLevels.forEach(sla => {
+      const opt = document.createElement("option");
+      opt.value = sla.SLA_LEVEL_ID;
+      opt.textContent = sla.NAME;
+      opt.dataset.response = sla.RESPONSE_TIME_HOURS;
+      opt.dataset.resolution = sla.RESOLUTION_TIME_HOURS;
+      slaSelect.appendChild(opt);
+    });
+
+    slaSelect.addEventListener("change", () => {
+      const selected = slaSelect.selectedOptions[0];
+      if (selected && selected.value) {
+        slaDetailsDiv.innerHTML = `Response Due: <strong>${selected.dataset.response} hrs</strong>, Resolution Due: <strong>${selected.dataset.resolution} hrs</strong>`;
+      } else {
+        slaDetailsDiv.innerHTML = "";
+      }
+    });
+  } catch (err) {
+    console.error("Error loading form data:", err);
+  }
+}
+// Call this on page load
+window.addEventListener('DOMContentLoaded', () => {
+  loadFormDropdowns();
+});
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+const payload = {
+  title: document.getElementById("title").value,
+  description: document.getElementById("description").value,
+  category_id: document.getElementById("category_id").value,
+  subcategory_id: document.getElementById("subcategory_id").value,
+  priority_id: document.getElementById("priority_id").value,
+  sla_id: document.getElementById("sla_id").value
+};
+
+    const res = await fetch("http://localhost:3000/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      alert("Ticket created successfully!");
+      form.reset();
+      loadTickets(userId);
+      document.getElementById("createTicketSection").style.display = "none";
+      document.getElementById("ticketTableSection").style.display = "block";
+    } else {
+      alert("Error creating ticket.");
+    }
+  });
 const ticketList = document.getElementById("ticketList");
 let allTickets = [];
 async function loadAllTickets() {
@@ -128,8 +252,7 @@ async function loadAllTickets() {
     console.error("🔥 Error fetching tickets:", err);
   }
 }
-let agentSlaBreached = 0;
-let agentSlaNearing = 0;
+
 
 function renderTickets(filterType) {
   ticketList.innerHTML = "";
@@ -143,7 +266,17 @@ function renderTickets(filterType) {
     closed: 0
   };
   const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
+let agentSlaBreached = 0;
+let agentSlaNearing = 0;
+allTickets.forEach(ticket => {
+  if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
+    agentSlaBreached++;
+  }else if (ticket.RESPONSE_DUE &&
+    new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
+    new Date(ticket.RESPONSE_DUE) > now &&
+    ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
+      agentSlaNearing++;
+}})
   const filtered = allTickets.filter(ticket => {
     let isDueValid = false;
     let diffDays = null;
@@ -178,9 +311,6 @@ function renderTickets(filterType) {
   });
 
   if (filtered.length === 0) {
-// console.log("📋 All Tickets:", allTickets);
-// console.log("🔎 Filter Type:", filterType);
-// console.log("🎯 Filtered Tickets:", filtered);
     ticketList.innerHTML = "<tr><td colspan='13'>No tickets in this category.</td></tr>";
     return;
   }else {
@@ -199,17 +329,15 @@ if (dueDate && !isNaN(dueDate)) {
   } else if (diffDays <= 7 && diffDays >= 0 && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
     row.classList.add("due-soon-row");
   }
-}
-      if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
-        row.classList.add("sla-breached");
-      agentSlaBreached++;
-      } else if (ticket.RESPONSE_DUE &&
-                 new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
-                 new Date(ticket.RESPONSE_DUE) > now &&
-                 ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
+}   
+if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
+    row.classList.add("sla-breached");
+  }else if (ticket.RESPONSE_DUE &&
+    new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
+    new Date(ticket.RESPONSE_DUE) > now &&
+    ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
         row.classList.add("sla-nearing");
-      agentSlaNearing++;
-      }    
+}
     let priorityClass = "";
     switch (ticket.PRIORITY_ID) {
       case 1: priorityClass = "priority-low"; break;
@@ -221,24 +349,22 @@ if (dueDate && !isNaN(dueDate)) {
     row.innerHTML = `
       <td>${ticket.TICKET_ID}</td>
       <td>${ticket.UPDATED_AT || '-'}</td>
-<td>${ticket.NAME || 'User'}</td>
-<td>${ticket.AGENT_NAME || '-'}</td>
+      <td>${ticket.NAME || 'User'}</td>
+      <td>${ticket.AGENT_NAME || '-'}</td>
       <td>${ticket.TITLE}</td>
       <td>${ticket.STATUS}</td>
       <td>${ticket.LAST_REPLIER || '-'}</td>
-        <td>${ticket.DUE_DATE ? new Date(ticket.DUE_DATE).toLocaleString() : '-'}</td>
+      <td>${ticket.DUE_DATE ? new Date(ticket.DUE_DATE).toLocaleString() : '-'}</td>
       <td class="${priorityClass}">${['Low', 'Medium', 'High', 'Critical'][ticket.PRIORITY_ID - 1]}</td>
-    <td>${ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE).toLocaleString() : '-'}</td>
-        <td>${ticket.RESOLUTION_DUE ? new Date(ticket.RESOLUTION_DUE).toLocaleString() : '-'}</td>
-        <td>${ticket.CATEGORY_NAME || '-'}</td>
-        <td>${ticket.SUBCATEGORY_NAME || '-'}</td>
+      <td>${ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE).toLocaleString() : '-'}</td>
+      <td>${ticket.RESOLUTION_DUE ? new Date(ticket.RESOLUTION_DUE).toLocaleString() : '-'}</td>
+      <td>${ticket.CATEGORY_NAME || '-'}</td>
+      <td>${ticket.SUBCATEGORY_NAME || '-'}</td>
       `;
-
     row.style.cursor = "pointer";
     row.addEventListener("click", () => {
       window.location.href = `ticketview.html?ticketId=${ticket.TICKET_ID}`;
     });
-
     ticketList.appendChild(row);
   });
   }
