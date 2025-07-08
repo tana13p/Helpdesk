@@ -31,6 +31,8 @@
   <button class="filter-btn" data-type="in-progress">In Progress <span class="badge" id="status-progress"></span></button>
   <button class="filter-btn" data-type="resolved">Resolved <span class="badge" id="status-resolved"></span></button>
   <button class="filter-btn" data-type="closed">Closed <span class="badge" id="status-closed"></span></button>
+<button class="filter-btn" data-type="sla-nearing">SLA Nearing <span class="badge" id="status-sla-nearing"></span></button>
+  <button class="filter-btn" data-type="sla-breached">SLA Breached <span class="badge" id="status-sla-breached"></span></button>
 </section>
 
     <section class="ticket-table" id="ticketTableSection">
@@ -51,26 +53,41 @@
     </section>
         <section class="create-ticket"id="createTicketSection" style="display: none;">
         <h2>Create New Ticket</h2>
-        <form id="ticketForm">
-        <input type="text" id="title" placeholder="Ticket Title" required />
-        <textarea id="description" rows="4" placeholder="Describe your issue..." required></textarea>
-        <select id="category_id">
-            <option value="">Select Category</option>
-            <option value="1">Software</option>
-            <option value="2">Hardware</option>
-            <option value="3">Network</option>
-        </select>
-        <select id="priority_id">
-            <option value="">Select Priority</option>
-            <option value="1">Low</option>
-            <option value="2">Medium</option>
-            <option value="3">High</option>
-        </select>
-        <button type="submit">Submit Ticket</button>
-        <button id="backToTicketsBtn" style="margin-bottom: 15px;">← Back to My Tickets</button>
-        </form>
-    </section>
+<form id="ticketForm">
+  <input type="text" id="title" placeholder="Ticket Title" required />
+  <textarea id="description" rows="4" placeholder="Describe your issue..." required></textarea>
 
+  <select id="category_id" required>
+    <option value="">Select Category</option>
+  </select>
+
+  <select id="subcategory_id" required>
+    <option value="">Select Subcategory</option>
+  </select>
+
+  <select id="priority_id" required>
+    <option value="">Select Priority</option>
+    <option value="1">Low</option>
+    <option value="2">Medium</option>
+    <option value="3">High</option>
+    <option value="4">Critical</option>
+  </select>
+
+  <select id="sla_id" required>
+    <option value="">Select SLA Level</option>
+  </select>
+
+  <div id="slaDetails" style="font-size: 13px; margin-top: 6px; color: #555;"></div>
+
+  <button type="submit">Submit Ticket</button>
+  <button id="backToTicketsBtn" style="margin-bottom: 15px;">← Back to My Tickets</button>
+</form>
+    </section>
+    <div id="attentionBox" class="attention-box" style="display: none;">
+  <strong>⚠️ Attention:</strong>
+  <p>You have <span id="slaBreachedCount">0</span> ticket(s) with SLA breached</p>
+  <p>You have <span id="slaNearingCount">0</span> ticket(s) with SLA nearing deadline</p>
+</div>
   </main>
 </div>
 <script>
@@ -122,15 +139,81 @@ const filterType = btn.dataset.type;
 
   const form = document.getElementById("ticketForm");
   const ticketList = document.getElementById("ticketList");
+// Load categories, subcategories, SLA levels
+async function loadFormDropdowns() {
+  try {
+    // Fetch categories
+    const catRes = await fetch("http://localhost:3000/api/categories", { credentials: "include" });
+    const categories = await catRes.json();
+    const categorySelect = document.getElementById("category_id");
+    categories.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.CATEGORY_ID;
+      opt.textContent = c.NAME;
+      categorySelect.appendChild(opt);
+    });
+
+    // Fetch subcategories
+    const subcatRes = await fetch("http://localhost:3000/api/subcategories", { credentials: "include" });
+    const subcategories = await subcatRes.json();
+
+    const subcategorySelect = document.getElementById("subcategory_id");
+
+    // Filter subcategories based on category selection
+    categorySelect.addEventListener("change", () => {
+      const selectedCat = categorySelect.value;
+      subcategorySelect.innerHTML = `<option value="">Select Subcategory</option>`;
+      subcategories.filter(sc => sc.CATEGORY_ID == selectedCat).forEach(sc => {
+        const opt = document.createElement("option");
+        opt.value = sc.SUBCATEGORY_ID;
+        opt.textContent = sc.NAME;
+        subcategorySelect.appendChild(opt);
+      });
+    });
+
+    // Fetch SLA levels
+    const slaRes = await fetch("http://localhost:3000/api/sla-levels", { credentials: "include" });
+    const slaLevels = await slaRes.json();
+    const slaSelect = document.getElementById("sla_id");
+    const slaDetailsDiv = document.getElementById("slaDetails");
+
+    slaLevels.forEach(sla => {
+      const opt = document.createElement("option");
+      opt.value = sla.SLA_LEVEL_ID;
+      opt.textContent = sla.NAME;
+      opt.dataset.response = sla.RESPONSE_TIME_HOURS;
+      opt.dataset.resolution = sla.RESOLUTION_TIME_HOURS;
+      slaSelect.appendChild(opt);
+    });
+
+    slaSelect.addEventListener("change", () => {
+      const selected = slaSelect.selectedOptions[0];
+      if (selected && selected.value) {
+        slaDetailsDiv.innerHTML = `Response Due: <strong>${selected.dataset.response} hrs</strong>, Resolution Due: <strong>${selected.dataset.resolution} hrs</strong>`;
+      } else {
+        slaDetailsDiv.innerHTML = "";
+      }
+    });
+  } catch (err) {
+    console.error("Error loading form data:", err);
+  }
+}
+
+// Call this on page load
+window.addEventListener('DOMContentLoaded', () => {
+  loadFormDropdowns();
+});
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const payload = {
-      title: document.getElementById("title").value,
-      description: document.getElementById("description").value,
-      category_id: document.getElementById("category_id").value,
-      priority_id: document.getElementById("priority_id").value,
-    };
+const payload = {
+  title: document.getElementById("title").value,
+  description: document.getElementById("description").value,
+  category_id: document.getElementById("category_id").value,
+  subcategory_id: document.getElementById("subcategory_id").value,
+  priority_id: document.getElementById("priority_id").value,
+  sla_id: document.getElementById("sla_id").value
+};
 
     const res = await fetch("http://localhost:3000/tickets", {
       method: "POST",
@@ -158,11 +241,22 @@ function renderTickets(filterType = "all") {
     4: 'Closed'
   };
 
+  const now = new Date();
   const filtered = allTickets.filter(ticket => {
+    const responseDue = ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE) : null;
+    const statusId = ticket.STATUS_ID;
+
     if (filterType === "all") return true;
-    if (filterType === "in-progress") return ticket.STATUS_ID === 2;
-    if (filterType === "resolved") return ticket.STATUS_ID === 3;
-    if (filterType === "closed") return ticket.STATUS_ID === 4;
+    if (filterType === "in-progress") return statusId === 2;
+    if (filterType === "resolved") return statusId === 3;
+    if (filterType === "closed") return statusId === 4;
+    if (filterType === "sla-breached") return responseDue && statusId !== 3 && statusId !== 4 && responseDue < now;
+    if (filterType === "sla-nearing") {
+      return responseDue &&
+             statusId !== 3 && statusId !== 4 &&
+             (responseDue - now <= 2 * 60 * 60 * 1000) &&
+             (responseDue > now);
+    }
     return true;
   });
 
@@ -173,6 +267,20 @@ function renderTickets(filterType = "all") {
 
   filtered.forEach(ticket => {
     const row = document.createElement("tr");
+    const now = new Date();
+
+    const responseDue = ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE) : null;
+
+    if (responseDue && responseDue < now && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
+      row.classList.add("sla-breached");
+    } else if (
+      responseDue &&
+      responseDue - now <= 2 * 60 * 60 * 1000 &&
+      responseDue > now &&
+      ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4
+    ) {
+      row.classList.add("sla-nearing");
+    }
 
     let priorityClass = '';
     switch (ticket.PRIORITY_ID) {
@@ -229,8 +337,35 @@ document.getElementById("status-all").innerText = data.length;
 document.getElementById("status-progress").innerText = progress;
 document.getElementById("status-resolved").innerText = resolved;
 document.getElementById("status-closed").innerText = closed;
+const now = new Date();
+const slaBreached = data.filter(
+  t => t.RESPONSE_DUE && new Date(t.RESPONSE_DUE) < now && t.STATUS_ID !== 3 && t.STATUS_ID !== 4
+).length;
 
-  }
+const slaNearing = data.filter(
+  t => t.RESPONSE_DUE && new Date(t.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 && new Date(t.RESPONSE_DUE) > now && t.STATUS_ID !== 3 && t.STATUS_ID !== 4
+).length;
+
+document.getElementById("status-sla-breached").innerText = slaBreached;
+document.getElementById("status-sla-nearing").innerText = slaNearing;
+  
+let attentionslaBreached = 0;
+let attentionslaNearing = 0;
+data.forEach(ticket => {
+  const responseDue = ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE) : null;
+  if (!responseDue || ticket.STATUS_ID === 3 || ticket.STATUS_ID === 4) return;
+
+  if (responseDue < now) attentionslaBreached++;
+  else if (responseDue - now <= 2 * 60 * 60 * 1000 && responseDue > now) attentionslaNearing++;
+});
+
+document.getElementById("slaBreachedCount").textContent = attentionslaBreached;
+document.getElementById("slaNearingCount").textContent = attentionslaNearing;
+
+// Show attention box only if needed
+const attentionBox = document.getElementById("attentionBox");
+attentionBox.style.display = (attentionslaBreached > 0 || attentionslaNearing > 0) ? "block" : "none";
+}
 
 </script>
 

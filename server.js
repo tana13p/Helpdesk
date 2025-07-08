@@ -794,4 +794,49 @@ app.post('/api/tools/trigger/toggle', async (req, res) => {
   }
 });
 
+app.get('/api/categories', async (req, res) => {
+  try {
+    const conn = await getConnection();
+    const result = await conn.execute(
+      `SELECT CATEGORY_ID, NAME FROM categories ORDER BY NAME`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching categories:", err);
+    res.status(500).json({ message: "Failed to fetch categories" });
+  }
+});
+
+app.get('/api/subcategories', async (req, res) => {
+  try {
+    const conn = await getConnection();
+    const result = await conn.execute(
+      `SELECT SUBCATEGORY_ID, NAME, CATEGORY_ID FROM subcategories ORDER BY NAME`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching subcategories:", err);
+    res.status(500).json({ message: "Failed to fetch subcategories" });
+  }
+});
+
+app.get('/api/sla-levels', async (req, res) => {
+  try {
+    const conn = await getConnection();
+    const result = await conn.execute(
+      `SELECT SLA_LEVEL_ID, NAME, RESPONSE_TIME_HOURS, RESOLUTION_TIME_HOURS FROM sla_levels ORDER BY SLA_LEVEL_ID`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error("❌ Error fetching SLA levels:", err);
+    res.status(500).json({ message: "Failed to fetch SLA levels" });
+  }
+});
+
 app.use(express.static('public'));
