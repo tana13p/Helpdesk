@@ -184,12 +184,12 @@ function renderTickets(filterType) {
         else if (diffDays <= 7) row.classList.add("due-soon-row");
       }
 
-      if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3) {
+      if (ticket.RESPONSE_DUE && new Date(ticket.RESPONSE_DUE) < now && ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
         row.classList.add("sla-breached");
       } else if (ticket.RESPONSE_DUE &&
                  new Date(ticket.RESPONSE_DUE) - now <= 2 * 60 * 60 * 1000 &&
                  new Date(ticket.RESPONSE_DUE) > now &&
-                 ticket.STATUS_ID !== 3) {
+                 ticket.STATUS_ID !== 3 && ticket.STATUS_ID !== 4) {
         row.classList.add("sla-nearing");
       }
 

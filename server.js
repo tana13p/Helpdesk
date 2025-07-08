@@ -629,11 +629,9 @@ app.post('/api/unavailability', async (req, res) => {
 
 app.get('/api/admin/all-tickets', async (req, res) => {
   const roleId = req.session.role_id;
-
   if (!req.session.userId || roleId !== 1) {
     return res.status(403).json({ message: 'Forbidden' });
   }
-
   try {
     const connection = await getConnection();
 
@@ -641,6 +639,7 @@ app.get('/api/admin/all-tickets', async (req, res) => {
       SELECT 
         t.TICKET_ID,
         t.TITLE,
+        t.DESCRIPTION,
         t.STATUS_ID,
         s.STATUS_NAME AS STATUS,
         t.ASSIGNED_TO,
@@ -649,6 +648,10 @@ app.get('/api/admin/all-tickets', async (req, res) => {
         t.RESPONSE_DUE,
         t.RESOLUTION_DUE,
         t.UPDATED_AT,
+        t.CREATED_BY,
+         t.CREATED_AT,
+         t.TIME_WORKED,
+         t.DUE_DATE,
         u.USERNAME AS NAME,
         lcu.USERNAME AS LAST_REPLIER,
         c.NAME AS CATEGORY_NAME,
@@ -671,14 +674,28 @@ app.get('/api/admin/all-tickets', async (req, res) => {
       LEFT JOIN ticket_comments last_com ON lc.TICKET_ID = last_com.TICKET_ID AND lc.latest_comment_time = last_com.COMMENTED_AT
       LEFT JOIN users lcu ON last_com.COMMENTER_ID = lcu.USER_ID
       ORDER BY t.UPDATED_AT DESC
-    `, [], {
-      outFormat: oracledb.OUT_FORMAT_OBJECT
-    });
+    `);
+const rows = result.rows;
+// Handle CLOBs
+    const parsedRows = await Promise.all(rows.map(async (row) => {
+      if (row.DESCRIPTION && typeof row.DESCRIPTION === 'object' && row.DESCRIPTION.constructor.name === 'Lob') {
+        const clob = row.DESCRIPTION;
+        return new Promise((resolve, reject) => {
+          let clobData = '';
+          clob.setEncoding('utf8');
+          clob.on('data', chunk => clobData += chunk);
+          clob.on('end', () => {
+            row.DESCRIPTION = clobData;
+            resolve(row);
+          });
+          clob.on('error', reject);
+        });
+      } else {
+        return row;
+      }
+    }));
 
-    console.log("✅ Raw result rows:", result.rows);
-    await connection.close();
-    res.json(result.rows);
-
+    res.json(parsedRows);
   } catch (err) {
     console.error("❌ Admin all tickets error:", err);
     res.status(500).json({ message: "Database error" });
