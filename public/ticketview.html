@@ -13,17 +13,24 @@
       <ul>
         <li>Status: <select id="statusSelect"><option>Loading...</option></select></li>
         <li>Priority: <select id="prioritySelect"><option>Loading...</option></select></li>
-        <li>Assigned to: <select id="assignedToSelect"><option>Loading...</option></select></li>
+        <li id="assignedToRow">Assigned to: <select id="assignedToSelect"><option>Loading...</option></select><span id="assignedToText" style="display: none;">Loading...</span></li>
         <li>Replies: <span id="replyCount">0</span></li>
         <li>Last updated: <span id="updatedAt">Loading...</span></li>
-<li>Due date: <input type="date" id="dueDateInput" /></li>
+        <li>Due date: <input type="date" id="dueDateInput" /></li>
+        <li>SLA ID: <span id="slaId">Loading...</span></li>
+        <li>Response Due: <span id="responseDue">Loading...</span></li>
+        <li>Resolution Due: <span id="resolutionDue">Loading...</span></li>
       </ul>
+        <div id="escalateControl" style="display:none;">
+          <button class="submit-buttons" onclick="escalateTicket()">Escalate to Higher Level</button>
+        </div>
     </aside>
     <main class="main-content">
       <section class="ticket-header">
         <h1 id="ticketTitle">Loading...</h1>
         <p><strong>From:</strong> <span id="ticketFrom">Loading...</span></p>
-        <p><strong>Custom Field:</strong> <span id="customField">Loading...</span></p>
+        <p><strong>Category:</strong> <span id="category">Loading...</span></p>
+        <p><strong>Subcategory:</strong> <span id="subcategory">Loading...</span></p>
       </section>
       <section class="message-thread" id="messageThread">
  <div id="comments-container" class="comments-section">
@@ -207,18 +214,42 @@ async function submit() {
     alert("Something went wrong.");
   }
 }
-    function getTicketIdFromURL() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('ticketId');
+function getTicketIdFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('ticketId');
+}
+async function escalateTicket() {
+  const ticketId = getTicketIdFromURL();
+  try {
+    const res = await fetch(`/api/ticket/${ticketId}/escalate`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Ticket escalated to higher level!");
+      location.reload();
+    } else {
+      alert("❌ Escalation failed: " + data.message);
     }
+  } catch (err) {
+    console.error("❌ Error escalating ticket:", err);
+    alert("Could not escalate ticket.");
+  }
+}
+
     async function fetchTicketData(ticketId, currentUser) {
       try {
         const res = await fetch(`http://localhost:3000/ticket/${ticketId}`);
         if (!res.ok) throw new Error('Ticket not found');
         const ticket = await res.json();
         document.getElementById("ticketTitle").textContent = ticket.TITLE || "Untitled";
+        document.getElementById("slaId").textContent = ticket.SLA_ID || "N/A";
+        document.getElementById("responseDue").textContent = ticket.RESPONSE_DUE ? new Date(ticket.RESPONSE_DUE).toLocaleString() : "N/A";
+        document.getElementById("resolutionDue").textContent = ticket.RESOLUTION_DUE ? new Date(ticket.RESOLUTION_DUE).toLocaleString() : "N/A";
         document.getElementById("ticketFrom").textContent = ticket.CREATED_BY_NAME || "Unknown User";
-        document.getElementById("customField").textContent = ticket.CATEGORY_NAME || "N/A";
+        document.getElementById("category").textContent = ticket.CATEGORY_NAME || "N/A";
+        document.getElementById("subcategory").textContent = ticket.SUBCATEGORY_NAME || "N/A";
 if (ticket.DUE_DATE) {
   const dateInput = document.getElementById("dueDateInput");
   const formatted = new Date(ticket.DUE_DATE).toISOString().split('T')[0]; // yyyy-mm-dd
@@ -227,6 +258,9 @@ if (ticket.DUE_DATE) {
 const assignedSelect = document.getElementById("assignedToSelect");
 if (assignedSelect) {
   assignedSelect.value = ticket.ASSIGNED_TO || '';
+}
+if (currentUser.role_id === 1 || currentUser.role_id === 2) {
+  document.getElementById("escalateControl").style.display = 'block';
 }
         document.getElementById("updatedAt").textContent = new Date(ticket.UPDATED_AT).toLocaleString();
         const initialTime = ticket.TIME_WORKED || '00:00:00';
@@ -241,13 +275,20 @@ if (currentUser.role_id === 3) {
     statusSelect.disabled = false;
     statusSelect.classList.remove('no-arrow');
   }else {
+  // Lock to current status if not resolved yet
+    const label = ticket.STATUS_ID == 1 ? "Open" :
+                  ticket.STATUS_ID == 2 ? "In Progress" :
+                  ticket.STATUS_ID == 4 ? "Closed" : "Unknown";
+    statusOptions = `<option value="${ticket.STATUS_ID}" selected>${label}</option>`;
+    statusSelect.disabled = true;
+    statusSelect.classList.add('no-arrow');
+  }}else if (currentUser.role_id === 2) {
   statusOptions = `
     <option value="1" ${ticket.STATUS_ID == 1 ? 'selected' : ''}>Open</option>
     <option value="2" ${ticket.STATUS_ID == 2 ? 'selected' : ''}>In Progress</option>
-    <option value="3" ${ticket.STATUS_ID == 3 ? 'selected' : ''}>Resolved</option>
     <option value="4" ${ticket.STATUS_ID == 4 ? 'selected' : ''}>Closed</option>
   `;
-}}else {
+}else {
   statusOptions = `
     <option value="1" ${ticket.STATUS_ID == 1 ? 'selected' : ''}>Open</option>
     <option value="2" ${ticket.STATUS_ID == 2 ? 'selected' : ''}>In Progress</option>
@@ -465,6 +506,10 @@ prioritySelect.addEventListener("change", async () => {
 document.getElementById('dueDateInput').addEventListener('change', async function () {
   const newDueDate = this.value;
   const ticketId = getTicketIdFromURL();
+  if(currentUser.role_id === 3 || currentUser.role_id === 2) {
+    alert("❌ You do not have permission to change the due date.");
+    return;
+  } else {
   try {
     const res = await fetch(`http://localhost:3000/api/ticket/${ticketId}/duedate`, {
       method: 'PUT',
@@ -480,13 +525,15 @@ document.getElementById('dueDateInput').addEventListener('change', async functio
   } catch (err) {
     console.error("Error updating due date:", err);
     alert("❌ Could not update due date.");
-  }
+  }}
 });
 
   const ticket = await fetchTicketData(ticketId, currentUser);
   if (!ticket) return;
 if (currentUser.role_id === 1) {
-  try {
+  document.getElementById('assignedToSelect').style.display = 'inline-block';
+  document.getElementById('assignedToText').style.display = 'none';
+
     const res = await fetch('/api/agents');
     if (!res.ok) throw new Error('Agent list not found');
     const agents = await res.json();
@@ -494,9 +541,11 @@ if (currentUser.role_id === 1) {
 select.innerHTML = agents.map(a => 
   `<option value="${a.USER_ID}" ${a.USER_ID === ticket.ASSIGNED_TO ? 'selected' : ''}>${a.NAME}</option>`
 ).join('');
-  } catch (err) {
-    console.error("❌ Error fetching agent list:", err);
-  }
+} else {
+  // show plain text for others
+  document.getElementById('assignedToSelect').style.display = 'none';
+  document.getElementById('assignedToText').style.display = 'inline-block';
+  document.getElementById('assignedToText').textContent = ticket.AGENT_NAME || "Unassigned";
 }
 document.getElementById('assignedToSelect').addEventListener('change', async function () {
   const assignedTo = this.value;
@@ -539,9 +588,7 @@ document.getElementById('assignedToSelect').addEventListener('change', async fun
       if (currentUser.role_id === 3) {
       document.getElementById('prioritySelect').disabled = true;
       document.getElementById('timeWorked').style.display = 'none';
-      document.getElementById('dueDate').style.display = 'none';
       document.getElementById('dueDateInput').disabled = true;
-      document.getElementById('assignedToInput').readOnly = true;
       document.getElementById('prioritySelect').classList.add('no-arrow');
       document.getElementById('saveTimeBtn').disabled = true;
       document.getElementById('saveTimeBtn').style.display = 'none';

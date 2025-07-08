@@ -587,3 +587,35 @@ select.no-arrow:disabled {
   color: #000;
   font-weight: bold;
 }
+
+#escalateControl {
+  text-align: center;
+}
+
+#escalateControl .submit-buttons {
+  background-color: #f44336; /* Red for urgency */
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+#escalateControl .submit-buttons:hover {
+  background-color: #d32f2f;
+  transform: scale(1.02);
+}
+
+#escalateControl .submit-buttons:active {
+  transform: scale(0.98);
+}
+
+#dueDateInput:disabled {
+  background-color: #ffffff;  /* Light gray background */
+  color: #2e2e2e;                /* Muted text color */
+  border: 1px solid #ccc;     /* Optional: define a border */
+  cursor: not-allowed;        /* Change cursor to indicate it's not clickable */
+}

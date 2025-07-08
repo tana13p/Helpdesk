@@ -253,11 +253,18 @@ app.get('/ticket/:ticketId', async (req, res) => {
     const result = await connection.execute(
       `SELECT t.*, 
               u1.username AS CREATED_BY_NAME, 
-              u2.username AS AGENT_NAME 
+              u2.username AS AGENT_NAME,
+              c.name AS CATEGORY_NAME, 
+  sc.name AS SUBCATEGORY_NAME,  
+  aa.level_id AS ASSIGNED_AGENT_LEVEL
        FROM tickets t
        LEFT JOIN users u1 ON t.created_by = u1.user_id
        LEFT JOIN users u2 ON t.assigned_to = u2.user_id
-       WHERE t.ticket_id = :ticketId`,
+       LEFT JOIN categories c ON t.category_id = c.category_id
+LEFT JOIN subcategories sc ON t.subcategory_id = sc.subcategory_id
+       LEFT JOIN agent_assignment aa 
+  ON aa.agent_id = t.assigned_to
+WHERE t.ticket_id = :ticketId`,
       { ticketId: Number(ticketId) }
     );
 
@@ -853,6 +860,22 @@ app.get('/api/sla-levels', async (req, res) => {
   } catch (err) {
     console.error("❌ Error fetching SLA levels:", err);
     res.status(500).json({ message: "Failed to fetch SLA levels" });
+  }
+});
+
+app.post('/api/ticket/:ticketId/escalate', async (req, res) => {
+  const { ticketId } = req.params;
+    try {
+const conn = await getConnection();
+    const result = await conn.execute(
+`BEGIN escalate_ticket(:ticketId); END;`, 
+      { ticketId: Number(ticketId) },
+      { autoCommit: true }
+    );
+    res.json({ message: 'Escalation triggered. DB will reassign automatically.' });
+  } catch (err) {
+    console.error('❌ Escalation trigger failed:', err);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 
