@@ -52,7 +52,7 @@ html, body {
   text-decoration: none; /* removes underline */
   color: white;           /* keeps it looking like regular text */
   display: block;
-  padding: 10px 15px;
+  padding: 10px 10px;
 }
 
 .sidebar select,
@@ -618,4 +618,132 @@ select.no-arrow:disabled {
   color: #2e2e2e;                /* Muted text color */
   border: 1px solid #ccc;     /* Optional: define a border */
   cursor: not-allowed;        /* Change cursor to indicate it's not clickable */
+}
+
+.nav-link.active {
+  background-color: #29394e;   /* Light background to indicate active */
+  color: #ffffff;              /* Blue text */
+  font-weight: bold;
+  border-left: 4px solid #344f6b;
+}
+
+/* Knowledgebase Admin Controls Specific Styling */
+#kbAdminControls {
+  background: #ffffff;
+  border: 1px solid #dcdcdc;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 30px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+#kbAdminControls h2 {
+  color: #2a7ae2;
+  margin-bottom: 16px;
+}
+
+#kbAdminControls input[type="text"],
+#kbAdminControls textarea {
+  background: #f9f9f9;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 14px;
+  width: 100%;
+  margin-bottom: 12px;
+  resize: vertical;
+}
+
+#kbAdminControls button[type="submit"] {
+  background-color: #2a7ae2;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#kbAdminControls button[type="submit"]:hover {
+  background-color: #1d5cb0;
+}
+
+/* Knowledgebase Entry Buttons */
+.kb-entry .edit-btn,
+.kb-entry .delete-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 10px;
+  margin-right: 6px;
+}
+
+.kb-entry .edit-btn {
+  background-color: #ffa726;
+  color: white;
+}
+
+.kb-entry .edit-btn:hover {
+  background-color: #fb8c00;
+}
+
+.kb-entry .delete-btn {
+  background-color: #e53935;
+  color: white !important;
+}
+
+.kb-entry .delete-btn:hover {
+  background-color: #c62828;
+}
+
+/* Edit Modal Styling */
+#editModal {
+  background: #ffffff;
+  border: 1px solid #ccc;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 500px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+#editModal input,
+#editModal textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: #f9f9f9;
+}
+
+#editModal button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+#editModal button:first-of-type {
+  background-color: #4CAF50;
+  color: white;
+}
+
+#editModal button:first-of-type:hover {
+  background-color: #43a047;
+}
+
+#editModal button:last-of-type {
+  background-color: #757575;
+  color: white;
+}
+
+#editModal button:last-of-type:hover {
+  background-color: #616161;
 }

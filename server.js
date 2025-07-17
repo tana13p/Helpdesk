@@ -879,4 +879,89 @@ const conn = await getConnection();
   }
 });
 
+app.put('/api/knowledgebase/:id', async (req, res) => {
+  const id = req.params.id;
+  const { title, problem_desc, solution_desc } = req.body;
+
+  if (!title || !problem_desc || !solution_desc) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  try {
+    const connection = await getConnection();
+
+    await connection.execute(
+      `UPDATE KNOWLEDGE_BASE 
+       SET TITLE = :title, PROBLEM_DESC = :problem_desc, SOLUTION_DESC = :solution_desc 
+       WHERE ID = :id`,
+      {
+        id,
+        title,
+        problem_desc,
+        solution_desc
+      },
+      { autoCommit: true }
+    );
+
+    await connection.close();
+    res.json({ message: "Knowledge base entry updated" });
+  } catch (err) {
+    console.error("❌ Error updating knowledge base:", err);
+    res.status(500).json({ error: "Failed to update article" });
+  }
+});
+app.post('/api/knowledgebase', async (req, res) => {
+  const { title, problem_desc, solution_desc, category } = req.body;
+
+  if (!title || !problem_desc || !solution_desc || !category) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const connection = await getConnection();
+
+    const result = await connection.execute(
+      `INSERT INTO KNOWLEDGE_BASE (TITLE, CATEGORY, PROBLEM_DESC, SOLUTION_DESC, CREATED_AT)
+       VALUES (:title, :category, :problem_desc, :solution_desc, SYSDATE)`,
+      {
+        title,
+        category,
+        problem_desc,
+        solution_desc
+      },
+      { autoCommit: true }
+    );
+
+    await connection.close();
+    res.status(201).json({ message: "Knowledge base entry created" });
+  } catch (err) {
+    console.error("❌ Error creating knowledge base entry:", err);
+    res.status(500).json({ error: "Failed to create article" });
+  }
+});
+app.delete('/api/knowledgebase/:id', async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const connection = await getConnection();
+
+    const result = await connection.execute(
+      `DELETE FROM KNOWLEDGE_BASE WHERE ID = :id`,
+      { id },
+      { autoCommit: true }
+    );
+
+    await connection.close();
+
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    res.json({ message: "Knowledge base entry deleted" });
+  } catch (err) {
+    console.error("❌ Error deleting knowledge base entry:", err);
+    res.status(500).json({ error: "Failed to delete article" });
+  }
+});
+
 app.use(express.static('public'));
