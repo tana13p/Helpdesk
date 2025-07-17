@@ -19,6 +19,7 @@
       <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
       <li><a href="admin_tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
       <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+      <!-- Users link will be injected by JS for admins -->
     </ul>
   </aside>
 
@@ -118,6 +119,17 @@
       if (response.ok) {
   userId = data.userId;
   document.getElementById("userName").textContent = `👤 ${data.username} ▾`;
+  // Set Tools link based on role
+  const navTools = document.getElementById('nav-tools');
+  if (data.role_id === 1) navTools.href = 'admin_tools.html';
+  else if (data.role_id === 2) navTools.href = 'agent_tools.html';
+  else navTools.href = 'customer_tools.html';
+  // Inject Users link if admin
+  if (data.role_id === 1) {
+    const usersLi = document.createElement('li');
+    usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
+    document.querySelector('.sidebar ul').appendChild(usersLi);
+  }
   setTimeout(() => loadAllTickets(), 0);
 } else {
         alert('Not logged in. Redirecting to login page.');

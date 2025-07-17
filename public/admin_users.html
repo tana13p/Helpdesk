@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Admin - User Management</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+        <li><a href="admin_dashboard.html" class="nav-link"><span>📋</span> Tickets</a></li>
+        <li><a href="templates.html" class="nav-link"><span>📄</span> Templates</a></li>
+        <li><a href="knowledgebase.html" class="nav-link"><span>📚</span> Knowledgebase</a></li>
+        <li><a href="categories.html" class="nav-link"><span>📂</span> Categories</a></li>
+        <li><a href="team.html" class="nav-link"><span>👥</span> Team</a></li>
+        <li><a href="reports.html" class="nav-link"><span>📊</span> Reports</a></li>
+        <li><a href="admin_tools.html" class="nav-link"><span>🔧</span> Tools</a></li>
+        <li><a href="settings.html" class="nav-link"><span>⚙️</span> Settings</a></li>
+        <li><a class="nav-link active" id="nav-users"><span>👤</span> Users</a></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header class="dashboard-header">
+        <div class="user-info">👤 Admin ▾</div>
+      </header>
+      <section class="user-management">
+        <div class="create-ticket" style="max-width: 420px; margin: 0 auto;">
+          <h2 style="margin-bottom: 18px; color: #2a7ae2;">Add New User</h2>
+          <form id="addUserForm" style="display: flex; flex-direction: column; gap: 15px;">
+            <input type="text" id="username" placeholder="Username" required />
+            <input type="email" id="email" placeholder="Email" required />
+            <input type="password" id="password" placeholder="Password" required />
+            <select id="role" required>
+              <option value="">Select Role</option>
+              <option value="1">Admin</option>
+              <option value="2">Agent</option>
+              <option value="3">Customer</option>
+            </select>
+            <button type="submit" class="create-ticket-btn">Add User</button>
+          </form>
+          <div id="addUserMessage" style="margin-top: 12px; min-height: 24px;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+      const messageDiv = document.getElementById('addUserMessage');
+      messageDiv.textContent = '';
+      try {
+        const res = await fetch('http://localhost:3000/api/admin/add-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, email, password, role_id: Number(role) })
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          messageDiv.textContent = '✅ User added successfully!';
+          messageDiv.style.color = 'green';
+          document.getElementById('addUserForm').reset();
+        } else {
+          messageDiv.textContent = result.message || '❌ Failed to add user.';
+          messageDiv.style.color = 'red';
+        }
+      } catch (err) {
+        messageDiv.textContent = '❌ Error adding user.';
+        messageDiv.style.color = 'red';
+      }
+    });
+  </script>
+</body>
+</html> 

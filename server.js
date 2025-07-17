@@ -965,3 +965,36 @@ app.delete('/api/knowledgebase/:id', async (req, res) => {
 });
 
 app.use(express.static('public'));
+
+// Add user endpoint for admin
+app.post('/api/admin/add-user', async (req, res) => {
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ success: false, message: 'Forbidden: Admins only' });
+  }
+  const { username, email, password, role_id } = req.body;
+  if (!username || !email || !password || !role_id) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+  try {
+    // Use signUp logic, but allow custom role_id
+    const { getConnection } = require('./dbconfig');
+    const bcrypt = require('bcrypt');
+    const connection = await getConnection();
+    const password_hash = await bcrypt.hash(password, 10);
+    await connection.execute(
+      `INSERT INTO users (username, email, password_hash, role_id) VALUES (:username, :email, :password_hash, :role_id)`,
+      { username, email, password_hash, role_id },
+      { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ success: true, message: 'User created successfully' });
+  } catch (err) {
+    if (err && err.errorNum === 1) {
+      // ORA-00001: unique constraint violated
+      res.status(409).json({ success: false, message: 'User with this email already exists.' });
+    } else {
+      console.error('❌ Error creating user:', err);
+      res.status(500).json({ success: false, message: 'Failed to create user.' });
+    }
+  }
+});

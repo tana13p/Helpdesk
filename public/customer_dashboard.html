@@ -115,6 +115,11 @@ let allTickets = [];
         const name = data.username || data.name || 'User';
         document.getElementById('userName').textContent = `👤 ${name} ▾`;
         loadTickets(userId);
+        // Set Tools link based on role
+        const navTools = document.getElementById('nav-tools');
+        if (data.role_id === 1) navTools.href = 'admin_tools.html';
+        else if (data.role_id === 2) navTools.href = 'agent_tools.html';
+        else navTools.href = 'customer_tools.html';
       } else {
         alert('Not logged in. Redirecting to login page.');
         window.location.href = 'signin.html';

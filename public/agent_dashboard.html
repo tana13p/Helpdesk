@@ -84,8 +84,12 @@
         console.log("Logged-in user ID:", data.userId);
         userId = data.userId;
         loadTickets(userId); // Load tickets once userId is available
-
-    } else {
+        // Set Tools link based on role (always run this after user info is fetched)
+        const navTools = document.getElementById('nav-tools');
+        if (data.role_id === 1) navTools.href = 'admin_tools.html';
+        else if (data.role_id === 2) navTools.href = 'agent_tools.html';
+        else navTools.href = 'customer_tools.html';
+      } else {
         alert('Not logged in. Redirecting to login page.');
         window.location.href = 'signin.html';
       }

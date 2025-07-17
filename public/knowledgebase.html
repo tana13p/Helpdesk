@@ -25,6 +25,7 @@
       <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
       <li><a href="tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
       <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+      <!-- Users link will be injected by JS for admins -->
     </ul>
     </aside>
 
@@ -68,19 +69,25 @@ const navTeamLi = document.getElementById("nav-team-li");
       const navTickets = document.getElementById('nav-tickets');
       if (user.role_id === 1) {
         navTickets.href = 'admin_dashboard.html';
-          navTeamLi.style.display = "list-item";
-          if (user.role_id === 1) {
-  document.getElementById("kbAdminControls").style.display = "block";  // ✅ Unhides the form
-}
+        navTeamLi.style.display = "list-item";
+        document.getElementById("kbAdminControls").style.display = "block";
+        // Inject Users link if admin
+        const usersLi = document.createElement('li');
+        usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
+        document.querySelector('.sidebar ul').appendChild(usersLi);
       } else if (user.role_id === 2) {
         navTickets.href = 'agent_dashboard.html';
-          navTeamLi.style.display = "list-item";
+        navTeamLi.style.display = "list-item";
       } else {
         navTickets.href = 'customer_dashboard.html';
         navTeamLi.style.display = "none";
       }
-
-    } catch (err) {
+      // Set Tools link based on role (always run this after user info is fetched)
+      const navTools = document.getElementById('nav-tools');
+      if (user.role_id === 1) navTools.href = 'admin_tools.html';
+      else if (user.role_id === 2) navTools.href = 'agent_tools.html';
+      else navTools.href = 'customer_tools.html';
+      } catch (err) {
       console.error("🔒 Could not fetch user info, please login again", err);
       // Optional: redirect to login
       window.location.href = 'signin.html';
