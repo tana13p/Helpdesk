@@ -747,3 +747,28 @@ select.no-arrow:disabled {
 #editModal button:last-of-type:hover {
   background-color: #616161;
 }
+
+.card {
+  background-color: white;
+  padding: 40px;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 15px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+/* Title */
+.card h1 {
+  font-size: 36px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #05386B;
+}
+
+/* Subheading */
+.card p {
+  font-size: 18px;
+  color: #444;
+  margin-bottom: 30px;
+}

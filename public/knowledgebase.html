@@ -64,29 +64,8 @@
 
       const user = await response.json();
       window.currentUser = user;
-      window.isAdmin = user.role_id === 1;
-const navTeamLi = document.getElementById("nav-team-li");
-      const navTickets = document.getElementById('nav-tickets');
-      if (user.role_id === 1) {
-        navTickets.href = 'admin_dashboard.html';
-        navTeamLi.style.display = "list-item";
-        document.getElementById("kbAdminControls").style.display = "block";
-        // Inject Users link if admin
-        const usersLi = document.createElement('li');
-        usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
-        document.querySelector('.sidebar ul').appendChild(usersLi);
-      } else if (user.role_id === 2) {
-        navTickets.href = 'agent_dashboard.html';
-        navTeamLi.style.display = "list-item";
-      } else {
-        navTickets.href = 'customer_dashboard.html';
-        navTeamLi.style.display = "none";
-      }
-      // Set Tools link based on role (always run this after user info is fetched)
-      const navTools = document.getElementById('nav-tools');
-      if (user.role_id === 1) navTools.href = 'admin_tools.html';
-      else if (user.role_id === 2) navTools.href = 'agent_tools.html';
-      else navTools.href = 'customer_tools.html';
+      window.isAdmin = user.role_id === 1; // <-- add this line
+      updateSidebar(user);
       } catch (err) {
       console.error("🔒 Could not fetch user info, please login again", err);
       // Optional: redirect to login
@@ -112,6 +91,40 @@ const navTeamLi = document.getElementById("nav-team-li");
         renderKB(filtered);
       });
     });
+
+    function updateSidebar(user) {
+      const isAdmin = user.role_id === 1;
+      const isAgent = user.role_id === 2;
+      const isCustomer = user.role_id === 3;
+
+      // Set hrefs based on role
+      document.getElementById('nav-tickets').href = isAdmin ? 'admin_dashboard.html' : isAgent ? 'agent_dashboard.html' : 'customer_dashboard.html';
+      document.getElementById('nav-settings').href = isAdmin ? 'settings.html' : isAgent ? 'agent_settings.html' : 'customer_settings.html';
+      const navTools = document.querySelector('a[href="tools.html"]');
+      if (navTools) navTools.href = isAdmin ? 'admin_tools.html' : isAgent ? 'agent_tools.html' : '#';
+      if (!isAdmin && !isAgent && navTools) navTools.parentElement.remove();
+
+      // Show/hide links
+      if (isCustomer) {
+        document.getElementById('nav-templates')?.parentElement.remove();
+        document.getElementById('nav-reports')?.parentElement.remove();
+        document.getElementById('nav-team')?.parentElement.remove();
+      } else {
+        // Admins and Agents see Team
+        document.getElementById('nav-team').style.display = 'list-item';
+      }
+
+      if (isAgent) {
+        document.getElementById('nav-reports')?.parentElement.remove();
+      }
+      
+      if (isAdmin) {
+        document.getElementById("kbAdminControls").style.display = "block";
+        const usersLi = document.createElement('li');
+        usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
+        document.querySelector('.sidebar ul').appendChild(usersLi);
+      }
+    }
 
     function renderKB(articles) {
       const container = document.getElementById("kbContainer");

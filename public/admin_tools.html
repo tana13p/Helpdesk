@@ -19,7 +19,7 @@
       <li><a href="reports.html" class="nav-link" id="nav-reports"><span>📊</span> Reports</a></li>
       <li><a class="nav-link active" id="nav-tools"><span>🔧</span> Tools</a></li>
       <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
-      <!-- Users link will be injected by JS for admins -->
+      <li><a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a></li>
     </ul>
   </aside>
 
@@ -56,17 +56,7 @@
 
       if (response.ok) {
   userId = data.userId;
-  // Inject Users link if admin
-  if (data.role_id === 1) {
-    const usersLi = document.createElement('li');
-    usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
-    document.querySelector('.sidebar ul').appendChild(usersLi);
-  }
-  // Set Tools link based on role (always run this after user info is fetched)
-  const navTools = document.getElementById('nav-tools');
-  if (data.role_id === 1) navTools.href = 'admin_tools.html';
-  else if (data.role_id === 2) navTools.href = 'agent_tools.html';
-  else navTools.href = 'customer_tools.html';
+
   console.log("✅ Logged-in user ID:", userId);
 } else {
         alert('Not logged in. Redirecting to login page.');

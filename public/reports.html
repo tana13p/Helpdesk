@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Reports</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+        <li><a href="admin_dashboard.html" class="nav-link"><span>📋</span> Tickets</a></li>
+        <li><a href="templates.html" class="nav-link"><span>📄</span> Templates</a></li>
+        <li><a href="knowledgebase.html" class="nav-link"><span>📚</span> Knowledgebase</a></li>
+        <li><a href="categories.html" class="nav-link"><span>📂</span> Categories</a></li>
+        <li><a href="team.html" class="nav-link"><span>👥</span> Team</a></li>
+        <li><a class="nav-link active" id="nav-reports"><span>📊</span> Reports</a></li>
+        <li><a href="admin_tools.html" class="nav-link" id="nav-tools"><span>🔧</span> Tools</a></li>
+        <li><a href="settings.html" class="nav-link" id="nav-settings"><span>⚙️</span> Settings</a></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1>Reports Dashboard</h1>
+      </header>
+      <section class="summary-cards" style="display: flex; gap: 24px; margin-bottom: 32px; flex-wrap: wrap;">
+        <div class="card" id="card-total" style="flex:1; min-width:180px; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); padding:24px;">
+          <div style="font-size:18px; color:#888;">Total Tickets</div>
+          <div id="totalTickets" style="font-size:2.2rem; font-weight:bold; color:#2a7ae2;">-</div>
+        </div>
+        <div class="card" id="card-open" style="flex:1; min-width:180px; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); padding:24px;">
+          <div style="font-size:18px; color:#888;">Open Tickets</div>
+          <div id="openTickets" style="font-size:2.2rem; font-weight:bold; color:#e67e22;">-</div>
+        </div>
+        <div class="card" id="card-resolved" style="flex:1; min-width:180px; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); padding:24px;">
+          <div style="font-size:18px; color:#888;">Resolved Tickets</div>
+          <div id="resolvedTickets" style="font-size:2.2rem; font-weight:bold; color:#27ae60;">-</div>
+        </div>
+        <div class="card" id="card-sla" style="flex:1; min-width:180px; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); padding:24px;">
+          <div style="font-size:18px; color:#888;">SLA Breaches</div>
+          <div id="slaBreaches" style="font-size:2.2rem; font-weight:bold; color:#e74c3c;">-</div>
+        </div>
+      </section>
+      <section id="agentPerformanceSection" style="margin-top: 32px;">
+        <h2 style="margin-bottom: 18px; color: #2a7ae2;">Agent Performance</h2>
+        <div id="agentPerformanceLoading" style="color: #888;">Loading agent performance...</div>
+        <table id="agentPerformanceTable" style="width:100%; background:#fff; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.05); border-collapse:collapse; display:none;">
+          <thead>
+            <tr style="background:#f3f6fa;">
+              <th style="padding:12px; text-align:left;">Agent</th>
+              <th style="padding:12px; text-align:left;">Assigned</th>
+              <th style="padding:12px; text-align:left;">Resolved</th>
+              <th style="padding:12px; text-align:left;">Avg Response (h)</th>
+              <th style="padding:12px; text-align:left;">Avg Resolution (h)</th>
+              <th style="padding:12px; text-align:left;">SLA Breaches</th>
+            </tr>
+          </thead>
+          <tbody id="agentPerformanceBody"></tbody>
+        </table>
+        <div id="agentPerformanceError" style="color:#e74c3c; display:none;"></div>
+      </section>
+
+  <section id="agent-report-section" style="margin-top: 48px; max-width: 600px; margin-left: auto; margin-right: auto; background: #fff; border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.07); padding: 32px 32px 24px 32px;">
+    <h2 style="font-size:1.3rem; color:#05386B; margin-bottom: 18px;">Agent Performance Report</h2>
+    <div style="margin-bottom: 18px;">
+      <label for="agentSelect" style="font-weight:500;">Select Agent:</label>
+      <select id="agentSelect" style="margin-left: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid #aaa;"></select>
+      <button id="loadAgentReport" class="btn" style="margin-left: 12px; padding: 8px 18px;">Generate Report</button>
+    </div>
+    <div id="agentStats" style="margin-top: 18px; display: none;">
+      <div style="margin-bottom: 10px;"><strong>Total Tickets Assigned:</strong> <span id="statAssigned"></span></div>
+      <div style="margin-bottom: 10px;"><strong>Tickets Resolved:</strong> <span id="statResolved"></span></div>
+      <div style="margin-bottom: 10px;"><strong>Average Response Time (hrs):</strong> <span id="statAvgResponse"></span></div>
+      <div style="margin-bottom: 10px;"><strong>Average Resolution Time (hrs):</strong> <span id="statAvgResolution"></span></div>
+      <div style="margin-bottom: 10px;"><strong>SLA Breaches:</strong> <span id="statSlaBreaches"></span></div>
+      <button id="downloadAgentPDF" class="btn" style="margin-top: 18px;">Download PDF</button>
+    </div>
+  </section>
+
+  <!-- Add Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Summary cards -->
+<div id="summaryCards" style="display: flex; flex-wrap: wrap; gap: 24px; margin: 32px 0 24px 0; justify-content: center;"></div>
+
+<!-- Charts -->
+<div style="display: flex; flex-wrap: wrap; gap: 32px; justify-content: center;">
+  <canvas id="ticketVolumeChart" width="400" height="200"></canvas>
+  <canvas id="statusPieChart" width="300" height="200"></canvas>
+  <canvas id="priorityBarChart" width="300" height="200"></canvas>
+  <canvas id="slaLineChart" width="400" height="200"></canvas>
+  <canvas id="agentBarChart" width="400" height="200"></canvas>
+  <canvas id="categoryBarChart" width="400" height="200"></canvas>
+  <canvas id="csatGaugeChart" width="300" height="200"></canvas>
+</div>
+
+<div style="text-align:center; margin-top:32px;">
+  <button id="downloadDashboardPDF" class="btn">Download Dashboard PDF</button>
+</div>
+</div>
+</main>
+<script>
+// Example data (replace with real API data)
+const summaryData = [
+  { title: 'Total Tickets', value: '1249', subtitle: 'Previous Month: 1158', color: '#2d7be5' },
+  { title: 'Open Tickets', value: '1045', subtitle: 'Previous Month: 978', color: '#e67e22' },
+  { title: 'Resolved Tickets', value: '542', subtitle: 'Previous Month: 509', color: '#3bb273' },
+  { title: 'SLA Compliance', value: '91%', subtitle: 'Previous Month: 89%', color: '#2d7be5' },
+  { title: 'Avg Response Time', value: '2.1h', subtitle: 'Previous: 2.3h', color: '#8e44ad' },
+  { title: 'Avg Resolution Time', value: '5.4h', subtitle: 'Previous: 5.7h', color: '#16a085' },
+  { title: 'CSAT', value: '4.6/5', subtitle: 'Previous: 4.5', color: '#f1c40f' }
+];
+
+function renderSummaryCards(data) {
+  const container = document.getElementById('summaryCards');
+  container.innerHTML = '';
+  data.forEach(card => {
+    const div = document.createElement('div');
+    div.style.background = card.color;
+    div.style.color = '#fff';
+    div.style.borderRadius = '14px';
+    div.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)';
+    div.style.padding = '24px 32px 18px 32px';
+    div.style.minWidth = '170px';
+    div.style.textAlign = 'center';
+    div.innerHTML = `<div style='font-size:1.1rem; margin-bottom:8px;'>${card.title}</div>
+      <div style='font-size:2.2rem; font-weight:700;'>${card.value}</div>
+      <div style='font-size:0.95rem; margin-top:8px; opacity:0.85;'>${card.subtitle}</div>`;
+    container.appendChild(div);
+  });
+}
+
+// Example chart data
+const ticketVolumeData = {
+  labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  datasets: [
+    { label: 'Created', data: [217,203,193,226,179,230,253,235,273,278,266,240], borderColor: '#2d7be5', backgroundColor: 'rgba(45,123,229,0.1)', type: 'line', tension: 0.3 },
+    { label: 'Resolved', data: [200,190,180,210,170,220,250,230,260,270,260,230], borderColor: '#3bb273', backgroundColor: 'rgba(59,178,115,0.1)', type: 'line', tension: 0.3 }
+  ]
+};
+const statusPieData = {
+  labels: ['Open','In Progress','Resolved','Closed','Overdue'],
+  datasets: [{ data: [120,45,300,200,15], backgroundColor: ['#e67e22','#2d7be5','#3bb273','#8e44ad','#e74c3c'] }]
+};
+const priorityBarData = {
+  labels: ['Critical','High','Medium','Low'],
+  datasets: [{ label: 'Tickets', data: [24,120,45,30], backgroundColor: ['#e74c3c','#e67e22','#2d7be5','#3bb273'] }]
+};
+const slaLineData = {
+  labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  datasets: [{ label: 'SLA Compliance (%)', data: [91,90,89,92,93,91,90,89,92,93,91,90], borderColor: '#2d7be5', backgroundColor: 'rgba(45,123,229,0.1)', fill: true }]
+};
+const agentBarData = {
+  labels: ['Agent1','Agent2','Agent3','Agent4','Agent5'],
+  datasets: [{ label: 'Tickets Resolved', data: [120,95,110,80,70], backgroundColor: '#2d7be5' }]
+};
+const categoryBarData = {
+  labels: ['Hardware','Software','Network','Access/Login','Other'],
+  datasets: [{ label: 'Tickets', data: [449,349,336,115,50], backgroundColor: '#3bb273' }]
+};
+const csatGaugeData = {
+  labels: ['0','1','2','3','4','5'],
+  datasets: [{ label: 'CSAT', data: [0,0,0,0,0,4.6], backgroundColor: ['#eee','#eee','#eee','#eee','#eee','#f1c40f'] }]
+};
+
+let ticketVolumeChart, statusPieChart, priorityBarChart, slaLineChart, agentBarChart, categoryBarChart, csatGaugeChart;
+let chartsReady = false;
+
+async function fetchAgentSummary(agentId) {
+  const res = await fetch(`/api/reports/agent/${agentId}/summary`);
+  return await res.json();
+}
+
+async function fetchAgentCharts(agentId) {
+  const res = await fetch(`/api/reports/agent/${agentId}/charts`);
+  return await res.json();
+}
+
+async function updateDashboardForAgent(agentId) {
+  if (!chartsReady) await createAllCharts();
+  currentAgentId = agentId;
+  // Fetch and render summary cards
+  const summary = await fetchAgentSummary(agentId);
+  const summaryData = [
+    { title: 'Total Tickets', value: summary.totalTickets, subtitle: '', color: '#2d7be5' },
+    { title: 'Open Tickets', value: summary.openTickets, subtitle: '', color: '#e67e22' },
+    { title: 'Resolved Tickets', value: summary.resolvedTickets, subtitle: '', color: '#3bb273' },
+    { title: 'SLA Compliance', value: summary.slaCompliance + '%', subtitle: '', color: '#2d7be5' },
+    { title: 'Avg Response Time', value: summary.avgResponseTime + 'h', subtitle: '', color: '#8e44ad' },
+    { title: 'Avg Resolution Time', value: summary.avgResolutionTime + 'h', subtitle: '', color: '#16a085' },
+    { title: 'CSAT', value: summary.csat + '/5', subtitle: '', color: '#f1c40f' }
+  ];
+  renderSummaryCards(summaryData);
+  // Fetch and render charts
+  const charts = await fetchAgentCharts(agentId);
+  // Ticket Volume Over Time
+  ticketVolumeChart.data.labels = charts.ticketVolume.map(row => row.MONTH);
+  ticketVolumeChart.data.datasets[0].data = charts.ticketVolume.map(row => row.COUNT);
+  ticketVolumeChart.update();
+  // Status Pie
+  statusPieChart.data.labels = charts.statusDist.map(row => 'Status ' + row.STATUS_ID);
+  statusPieChart.data.datasets[0].data = charts.statusDist.map(row => row.COUNT);
+  statusPieChart.update();
+  // Priority Bar
+  priorityBarChart.data.labels = charts.priorityDist.map(row => 'Priority ' + row.PRIORITY_ID);
+  priorityBarChart.data.datasets[0].data = charts.priorityDist.map(row => row.COUNT);
+  priorityBarChart.update();
+  // SLA Compliance
+  slaLineChart.data.labels = charts.slaCompliance.labels;
+  slaLineChart.data.datasets[0].data = charts.slaCompliance.data;
+  slaLineChart.update();
+  // Agent Bar (just this agent)
+  agentBarChart.data.labels = ['Agent'];
+  agentBarChart.data.datasets[0].data = [summary.resolvedTickets];
+  agentBarChart.update();
+  // Category Bar
+  categoryBarChart.data.labels = charts.categoryDist.map(row => row.CATEGORY);
+  categoryBarChart.data.datasets[0].data = charts.categoryDist.map(row => row.COUNT);
+  categoryBarChart.update();
+  // CSAT Gauge
+  csatGaugeChart.data.datasets[0].data = [0,0,0,0,0,summary.csat];
+  csatGaugeChart.update();
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await createAllCharts(); // This will call updateDashboardForAgent for the first agent
+});
+
+async function createAllCharts() {
+  // Create all charts with dummy data (will be updated immediately)
+  ticketVolumeChart = new Chart(document.getElementById('ticketVolumeChart').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'Created', data: [], borderColor: '#2d7be5', backgroundColor: 'rgba(45,123,229,0.1)', type: 'line', tension: 0.3 }] }, options: { responsive: false } });
+  statusPieChart = new Chart(document.getElementById('statusPieChart').getContext('2d'), { type: 'pie', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#e67e22','#2d7be5','#3bb273','#8e44ad','#e74c3c'] }] }, options: { responsive: false } });
+  priorityBarChart = new Chart(document.getElementById('priorityBarChart').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Tickets', data: [], backgroundColor: ['#e74c3c','#e67e22','#2d7be5','#3bb273'] }] }, options: { responsive: false } });
+  slaLineChart = new Chart(document.getElementById('slaLineChart').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'SLA Compliance (%)', data: [], borderColor: '#2d7be5', backgroundColor: 'rgba(45,123,229,0.1)', fill: true }] }, options: { responsive: false } });
+  agentBarChart = new Chart(document.getElementById('agentBarChart').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Tickets Resolved', data: [], backgroundColor: '#2d7be5' }] }, options: { responsive: false } });
+  categoryBarChart = new Chart(document.getElementById('categoryBarChart').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Tickets', data: [], backgroundColor: '#3bb273' }] }, options: { responsive: false } });
+  csatGaugeChart = new Chart(document.getElementById('csatGaugeChart').getContext('2d'), { type: 'bar', data: { labels: ['0','1','2','3','4','5'], datasets: [{ label: 'CSAT', data: [0,0,0,0,0,0], backgroundColor: ['#eee','#eee','#eee','#eee','#eee','#f1c40f'] }] }, options: { responsive: false, indexAxis: 'y', plugins: { legend: { display: false } } } });
+  chartsReady = true;
+  document.getElementById('downloadDashboardPDF').disabled = false;
+}
+
+// Download Dashboard PDF
+async function downloadDashboardPDF() {
+  if (!chartsReady || !ticketVolumeChart || !statusPieChart || !priorityBarChart || !slaLineChart || !agentBarChart || !categoryBarChart || !csatGaugeChart) {
+    alert('Charts are not ready yet. Please wait or reload the page.');
+    return;
+  }
+  // Gather summary cards
+  const summary = await fetchAgentSummary(currentAgentId);
+  const summaryData = [
+    { title: 'Total Tickets', value: summary.totalTickets, subtitle: '', color: '#2d7be5' },
+    { title: 'Open Tickets', value: summary.openTickets, subtitle: '', color: '#e67e22' },
+    { title: 'Resolved Tickets', value: summary.resolvedTickets, subtitle: '', color: '#3bb273' },
+    { title: 'SLA Compliance', value: summary.slaCompliance + '%', subtitle: '', color: '#2d7be5' },
+    { title: 'Avg Response Time', value: summary.avgResponseTime + 'h', subtitle: '', color: '#8e44ad' },
+    { title: 'Avg Resolution Time', value: summary.avgResolutionTime + 'h', subtitle: '', color: '#16a085' },
+    { title: 'CSAT', value: summary.csat + '/5', subtitle: '', color: '#f1c40f' }
+  ];
+  // Defensive checks for charts
+  const chartVars = [
+    ticketVolumeChart, statusPieChart, priorityBarChart, slaLineChart, agentBarChart, categoryBarChart, csatGaugeChart
+  ];
+  const chartNames = [
+    'ticketVolumeChart', 'statusPieChart', 'priorityBarChart', 'slaLineChart', 'agentBarChart', 'categoryBarChart', 'csatGaugeChart'
+  ];
+  for (let i = 0; i < chartVars.length; i++) {
+    if (!chartVars[i]) {
+      console.error(`Chart not defined: ${chartNames[i]}`);
+      alert(`Cannot export PDF: Chart not loaded (${chartNames[i]}). Please reload the page.`);
+      return;
+    }
+  }
+  // Gather chart images
+  const charts = [
+    { title: 'Ticket Volume Over Time', image: ticketVolumeChart.toBase64Image() },
+    { title: 'Ticket Status Distribution', image: statusPieChart.toBase64Image() },
+    { title: 'Ticket Volume by Priority', image: priorityBarChart.toBase64Image() },
+    { title: 'SLA Compliance Over Time', image: slaLineChart.toBase64Image() },
+    { title: 'Agent Performance', image: agentBarChart.toBase64Image() },
+    { title: 'Ticket Volume by Category', image: categoryBarChart.toBase64Image() },
+    { title: 'Customer Satisfaction', image: csatGaugeChart.toBase64Image() }
+  ];
+  // Send to backend
+  const res = await fetch('/api/reports/dashboard-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ summary: summaryData, charts })
+  });
+  if (!res.ok) {
+    alert('Failed to generate PDF');
+    return;
+  }
+  // Download PDF
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dashboard_report.pdf';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+document.getElementById('downloadDashboardPDF').onclick = function() {
+  if (!chartsReady || !ticketVolumeChart || !statusPieChart || !priorityBarChart || !slaLineChart || !agentBarChart || !categoryBarChart || !csatGaugeChart) {
+    alert('Charts are not ready yet. Please wait or reload the page.');
+    return;
+  }
+  downloadDashboardPDF();
+};
+
+    console.log('Script loaded!');
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM fully loaded');
+      loadOverallStats();
+      loadAgentPerformanceTable();
+      loadAgents();
+      // Chart 1: Effect of ticket volume on efficiency
+      const ctx1 = document.getElementById('efficiencyChart').getContext('2d');
+      efficiencyChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+          datasets: [
+            {
+              label: 'Resolution efficiency (%)',
+              data: [90,85,80,75,70,65,60,55,50,45,40,35],
+              borderColor: '#e74c3c',
+              backgroundColor: 'rgba(231,76,60,0.1)',
+              yAxisID: 'y',
+            },
+            {
+              label: 'Ticket volume',
+              data: [1000,1200,1400,1600,1800,2000,2200,2400,2600,2800,3000,3200],
+              borderColor: '#2d7be5',
+              backgroundColor: 'rgba(45,123,229,0.1)',
+              yAxisID: 'y1',
+            }
+          ]
+        },
+        options: {
+          responsive: false,
+          scales: {
+            y: { type: 'linear', position: 'left', min: 0, max: 100 },
+            y1: { type: 'linear', position: 'right', min: 1000, max: 3200 }
+          }
+        }
+      });
+      // Chart 2: Technician availability vs ticket volume
+      const ctx2 = document.getElementById('availabilityChart').getContext('2d');
+      availabilityChart = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ['1am','3am','5am','7am','9am','11am','1pm','3pm','5pm','7pm','9pm','11pm'],
+          datasets: [
+            {
+              label: 'Collective technician availability (hours)',
+              data: [10,12,15,20,30,40,50,60,55,40,25,15],
+              backgroundColor: '#2d7be5',
+            },
+            {
+              label: 'Incident volume',
+              data: [2,3,5,8,12,18,25,30,28,20,10,5],
+              backgroundColor: '#3bb273',
+            }
+          ]
+        },
+        options: { responsive: false }
+      });
+    });
+
+    async function loadOverallStats() {
+      try {
+        const res = await fetch('/api/reports/summary', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch report data');
+        const data = await res.json();
+        document.getElementById('totalTickets').textContent = data.totalTickets ?? '-';
+        document.getElementById('openTickets').textContent = data.openTickets ?? '-';
+        document.getElementById('resolvedTickets').textContent = data.resolvedTickets ?? '-';
+        document.getElementById('slaBreaches').textContent = data.slaBreaches ?? '-';
+      } catch (err) {
+        document.getElementById('totalTickets').textContent = '-';
+        document.getElementById('openTickets').textContent = '-';
+        document.getElementById('resolvedTickets').textContent = '-';
+        document.getElementById('slaBreaches').textContent = '-';
+      }
+    }
+
+    async function loadAgentPerformanceTable() {
+      try {
+        const res = await fetch('/api/reports/agents', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch agent performance');
+        const agents = await res.json();
+        const tbody = document.getElementById('agentPerformanceBody');
+        tbody.innerHTML = '';
+        agents.forEach(agent => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style='padding:10px;'>${agent.agentName}</td>
+            <td style='padding:10px;'>${agent.assignedTickets}</td>
+            <td style='padding:10px;'>${agent.resolvedTickets}</td>
+            <td style='padding:10px;'>${agent.avgResponseTime ?? '-'}</td>
+            <td style='padding:10px;'>${agent.avgResolutionTime ?? '-'}</td>
+            <td style='padding:10px;'>${agent.slaBreaches}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        document.getElementById('agentPerformanceLoading').style.display = 'none';
+        document.getElementById('agentPerformanceTable').style.display = '';
+      } catch (err) {
+        document.getElementById('agentPerformanceLoading').style.display = 'none';
+        document.getElementById('agentPerformanceError').textContent = 'Failed to load agent performance.';
+        document.getElementById('agentPerformanceError').style.display = '';
+      }
+    }
+
+    async function loadAgents() {
+      console.log('loadAgents called');
+      const res = await fetch('/api/reports/agents');
+      const agentStats = await res.json();
+      console.log('Agent stats for dropdown:', agentStats);
+      const select = document.getElementById('agentSelect');
+      select.innerHTML = '';
+      agentStats.forEach(agent => {
+        const opt = document.createElement('option');
+        opt.value = agent.agentId;
+        opt.textContent = agent.agentName;
+        select.appendChild(opt);
+      });
+      if (agentStats.length > 0) {
+        await updateDashboardForAgent(agentStats[0].agentId);
+        select.value = agentStats[0].agentId;
+      }
+    }
+
+    document.getElementById('agentSelect').onchange = function() {
+      updateDashboardForAgent(this.value);
+    };
+
+    document.getElementById('loadAgentReport').onclick = async function() {
+      console.log('Generate Report clicked');
+      const agentId = document.getElementById('agentSelect').value;
+      await updateDashboardForAgent(agentId);
+    };
+
+    async function loadAgentStats(agentId) {
+      console.log('Loading stats for agent:', agentId);
+      const res = await fetch('/api/reports/agents');
+      const agentStats = await res.json();
+      const agent = agentStats.find(a => a.agentId == agentId);
+      if (!agent) {
+        document.getElementById('agentStats').style.display = 'none';
+        return;
+      }
+      document.getElementById('statAssigned').textContent = agent.assignedTickets;
+      document.getElementById('statResolved').textContent = agent.resolvedTickets;
+      document.getElementById('statAvgResponse').textContent = agent.avgResponseTime;
+      document.getElementById('statAvgResolution').textContent = agent.avgResolutionTime;
+      document.getElementById('statSlaBreaches').textContent = agent.slaBreaches;
+      document.getElementById('agentStats').style.display = 'block';
+    }
+
+    // Example summary stats (replace with your real data)
+    function getSummaryStats() {
+      return [
+        { title: 'Tech to ticket ratio', value: '1:40', subtitle: 'Last quarter: 1:25', color: '#2d7be5' },
+        { title: 'High impact issue frequency', value: '10 days', subtitle: 'Last quarter: 9 days', color: '#3bb273' },
+        { title: 'Happiness index', value: '82%', subtitle: 'Last quarter: 81%', color: '#2d7be5' },
+        { title: 'Self-service adoption', value: '23%', subtitle: 'Last quarter: 19%', color: '#e74c3c' }
+      ];
+    }
+
+    // Render example charts
+    let efficiencyChart, availabilityChart;
+
+    // Download Dashboard PDF
+    async function downloadDashboardPDF() {
+      // Get summary stats
+      const summary = getSummaryStats();
+      // Get chart images
+      const charts = [
+        { title: 'Effect of ticket volume on efficiency', image: efficiencyChart.toBase64Image() },
+        { title: 'Technician availability vs ticket volume', image: availabilityChart.toBase64Image() }
+      ];
+      // Send to backend
+      const res = await fetch('/api/reports/dashboard-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary, charts })
+      });
+      if (!res.ok) {
+        alert('Failed to generate PDF');
+        return;
+      }
+      // Download PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dashboard_report.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }
+    document.getElementById('downloadDashboardPDF').onclick = downloadDashboardPDF;
+  </script>
+</body>
+</html> 

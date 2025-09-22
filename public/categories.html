@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Categories</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <style>
+    .cat-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+      margin-bottom: 28px;
+      padding: 28px 32px 18px 32px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cat-card h2 {
+      color: #05386B;
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+    .sub-list {
+      margin-left: 18px;
+      margin-top: 8px;
+    }
+    .sub-list li {
+      margin-bottom: 4px;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul id="sidebarLinks"></ul>
+    </aside>
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1 style="font-size:2rem; margin-bottom: 0.5em;">📂 Categories & Subcategories</h1>
+      </header>
+      <div id="categoriesContainer"></div>
+    </main>
+  </div>
+  <script>
+    async function loadCategories() {
+      const [catRes, subRes] = await Promise.all([
+        fetch('/api/categories'),
+        fetch('/api/subcategories')
+      ]);
+      const categories = await catRes.json();
+      const subcategories = await subRes.json();
+      const container = document.getElementById('categoriesContainer');
+      container.innerHTML = '';
+      categories.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'cat-card';
+        card.innerHTML = `<h2>${cat.NAME}</h2>`;
+        const subs = subcategories.filter(s => s.CATEGORY_ID === cat.CATEGORY_ID);
+        if (subs.length > 0) {
+          const ul = document.createElement('ul');
+          ul.className = 'sub-list';
+          subs.forEach(sub => {
+            const li = document.createElement('li');
+            li.textContent = sub.NAME;
+            ul.appendChild(li);
+          });
+          card.appendChild(ul);
+        } else {
+          const p = document.createElement('p');
+          p.textContent = 'No subcategories.';
+          p.style.color = '#888';
+          card.appendChild(p);
+        }
+        container.appendChild(card);
+      });
+    }
+
+    function buildSidebar(role) {
+      const sidebar = document.getElementById('sidebarLinks');
+      sidebar.innerHTML = '';
+      let links = [];
+      if (role === 1) { // Admin
+        links = [
+          { href: 'admin_dashboard.html', label: '📋 Tickets' },
+          { href: 'templates.html', label: '📄 Templates' },
+          { href: 'knowledgebase.html', label: '📚 Knowledgebase' },
+          { href: 'categories.html', label: '📂 Categories', active: true },
+          { href: 'team.html', label: '👥 Team' },
+          { href: 'reports.html', label: '📊 Reports' },
+          { href: 'admin_tools.html', label: '🔧 Tools' },
+          { href: 'settings.html', label: '⚙️ Settings' },
+          { href: 'admin_users.html', label: '👤 Users' }
+        ];
+      } else if (role === 2) { // Agent
+        links = [
+          { href: 'agent_dashboard.html', label: '📋 Tickets' },
+          { href: 'templates.html', label: '📄 Templates' },
+          { href: 'knowledgebase.html', label: '📚 Knowledgebase' },
+          { href: 'categories.html', label: '📂 Categories', active: true },
+          { href: 'team.html', label: '👥 Team' },
+          { href: 'agent_tools.html', label: '🔧 Tools' },
+          { href: 'agent_settings.html', label: '⚙️ Settings' }
+        ];
+      } else { // Customer
+        links = [
+          { href: 'customer_dashboard.html', label: '📋 Tickets' },
+          { href: 'knowledgebase.html', label: '📚 Knowledgebase' },
+          { href: 'categories.html', label: '📂 Categories', active: true },
+          { href: 'customer_settings.html', label: '⚙️ Settings' }
+        ];
+      }
+      links.forEach(link => {
+        const li = document.createElement('li');
+        li.innerHTML = `<a href="${link.href}" class="nav-link${link.active ? ' active' : ''}">${link.label}</a>`;
+        sidebar.appendChild(li);
+      });
+    }
+
+    async function setupSidebarAndCategories() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('Not logged in');
+        const user = await res.json();
+        buildSidebar(user.role_id);
+        loadCategories();
+      } catch (err) {
+        window.location.href = 'signin.html';
+      }
+    }
+    window.addEventListener('DOMContentLoaded', setupSidebarAndCategories);
+  </script>
+</body>
+</html> 

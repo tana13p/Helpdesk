@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Ticket Templates</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+        <li><a href="customer_dashboard.html" class="nav-link"><span>📋</span> Tickets</a></li>
+        <li><a class="nav-link active" id="nav-templates"><span>📄</span> Templates</a></li>
+        <li><a href="knowledgebase.html" class="nav-link"><span>📚</span> Knowledgebase</a></li>
+        <li><a href="categories.html" class="nav-link"><span>📂</span> Categories</a></li>
+        <li><a href="team.html" class="nav-link" id="nav-team"><span>👥</span> Team</a></li>
+        <li><a href="reports.html" class="nav-link"><span>📊</span> Reports</a></li>
+        <li><a href="customer_tools.html" class="nav-link"><span>🔧</span> Tools</a></li>
+        <li><a href="settings.html" class="nav-link"><span>⚙️</span> Settings</a></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1>Popular Ticket Templates</h1>
+      </header>
+      <section class="template-list" style="display: flex; flex-wrap: wrap; gap: 30px; margin-top: 32px; margin-left: 60px;">
+        <!-- Template Cards -->
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Acknowledging a support request has been received</h2>
+          <p>Thank you for reaching out. We received your request and have already started working on resolving your issue...</p>
+          <button class="btn" onclick="copyTemplate('template1')">Copy to clipboard</button>
+          <textarea id="template1" style="display:none;">Hi [NAME],
+Thank you for reaching out. We received your request and have already started working on resolving your issue. One of our agents will get back to you as soon as possible. Typically, it takes us less than 24 hours to respond with a resolution.
+If you have any additional information that you think will help us to assist you, please reply to this email. If it’s an emergency, feel free to give us a call at [number] or start a live chat with our support team.
+Thanks again for contacting us,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Responding to information request</h2>
+          <p>We’re always happy to help our customers learn more about our product. We’d like to direct you to a relevant article...</p>
+          <button class="btn" onclick="copyTemplate('template2')">Copy to clipboard</button>
+          <textarea id="template2" style="display:none;">Hi [NAME],
+Thank you for reaching out! We’re always happy to help our customers learn more about our product.
+We’d like to direct you to a relevant article from our Knowledge Base that contains detailed information about this feature. We also happen to have a blog post that discusses how to get the most out of it, so while you’re here, why don’t you give that a quick read too?
+In case there are still some questions and you’d like further clarification, please don’t hesitate to let us know by replying to this message. We’re at your service 24/7.
+Enjoy your day,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Password reset request</h2>
+          <p>We’ve received a request to reset the password for the [COMPANY] account associated with (email)...</p>
+          <button class="btn" onclick="copyTemplate('template3')">Copy to clipboard</button>
+          <textarea id="template3" style="display:none;">Hi [NAME],
+We’ve received a request to reset the password for the [COMPANY] account associated with (email). No changes have been made to your account yet. You can reset your password by clicking the link below:
+Reset your password
+If you didn’t request a new password, you can safely ignore this email. Only a person with access to your email can reset your account password.
+If you need help, or you have any other questions, fell free to call us at (number). We’re here to assist you at any step along the way.
+Thanks,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Customer requesting a feature that is on your roadmap</h2>
+          <p>Thanks for the feedback. I can definitely see how this feature would be helpful to our customers...</p>
+          <button class="btn" onclick="copyTemplate('template4')">Copy to clipboard</button>
+          <textarea id="template4" style="display:none;">Hi [NAME],
+Thanks for the feedback. I can definitely see how this feature would be helpful to our customers. Luckily, our development team is already on it, and we expect to release it next quarter. Would you be interested in being a part of our beta group and one of the first customers to try it out? If so, I’d be happy to put you on the list.
+Let me know, and please don’t hesitate to reach out if you have any other additional insights that you’d like me to pass on to our development team.
+Thanks,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Customer requesting a feature that you are not going to build</h2>
+          <p>Unfortunately, it’s not on our roadmap as of now. Our development resources are currently limited...</p>
+          <button class="btn" onclick="copyTemplate('template5')">Copy to clipboard</button>
+          <textarea id="template5" style="display:none;">Hi [NAME],
+Thanks for the feedback. I can definitely see why you would be interested in that feature. Unfortunately, it’s not on our roadmap as of now.
+Since our development resources are currently limited, we have decided to tackle features X and Y as a priority, as the majority of our customers have heavily requested them. These features will also be beneficial to you because of (…).
+That being said, we’ll let you know if anything changes around this. Please do reach out if you have any other requests – we’re always here to listen.
+Thanks,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Customer requesting a feature that has been removed</h2>
+          <p>Unfortunately, we are not planning to bring it back any time soon. The reason is that it was a complex feature to maintain...</p>
+          <button class="btn" onclick="copyTemplate('template6')">Copy to clipboard</button>
+          <textarea id="template6" style="display:none;">Hi [NAME],
+Thanks for reaching out. I can definitely understand that it’s frustrating to lose a feature that you’ve come to rely on in your business. Unfortunately, we are not planning to bring it back any time soon.
+The reason is that it was a complex feature to maintain. It wasn’t being used by the majority of our customers, which meant we were spending a lot of development time and resources on something that wasn’t making our product better for most users.
+However, by making a decision to drop it, we’ve managed to allocate those resources into building (new features) that will be launched much sooner than we otherwise could have achieved.
+I realize it’s not the answer you were hoping for, though. Some of our other customers have found that (alternative feature) is a fairly good substitute for that functionality. If you’d like to, I’d be happy to give you my best advice on how you can use it.
+Sincerely,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Accepting a refund request</h2>
+          <p>Thank you for contacting us to request a refund on your purchase of [PRODUCT/ SERVICE]...</p>
+          <button class="btn" onclick="copyTemplate('template7')">Copy to clipboard</button>
+          <textarea id="template7" style="display:none;">Dear [NAME],
+Thank you for contacting us to request a refund on your purchase of [PRODUCT/ SERVICE]. We are sorry to hear our product didn’t meet your expectations. Because your request falls under our refund policy, we will gladly honor your decision.
+We have processed your request and have issued a refund to your credit card company. It may take up to [number of days] to see this credit on your account.
+If there is any way for us to retain your business, we would love the opportunity to try. Just let us know, and we will do whatever we can. Feel free to contact us also if you have any further questions.
+Regards,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Denying a refund request</h2>
+          <p>We’ve received your request for a refund and we regret to inform you that it has fallen outside of our refund policy as stated here...</p>
+          <button class="btn" onclick="copyTemplate('template8')">Copy to clipboard</button>
+          <textarea id="template8" style="display:none;">Dear [NAME],
+I’m sorry to hear you’re not happy with our [PRODUCT/ SERVICE]. We’ve received your request for a refund and we regret to inform you that it has fallen outside of our refund policy as stated here.
+While we’re unable to provide a refund at this time, we value your business and would like to offer you a discount of 15% on your next purchase.
+If there is any way you feel we could improve our product/ service, please don’t hesitate to let us know.
+Sincerely,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Privacy policy concern</h2>
+          <p>We understand data privacy and security is a major concern for our customers. At [COMPANY NAME], we want you feel comfortable sharing your personal data...</p>
+          <button class="btn" onclick="copyTemplate('template9')">Copy to clipboard</button>
+          <textarea id="template9" style="display:none;">Hi [NAME],
+Thank you for your inquiry. We understand data privacy and security is a major concern for our customers. At [COMPANY NAME], we want you feel comfortable sharing your personal data through our website, so privacy is something we take very seriously.
+We’ve taken proper precautions to completely secure your data both online and offline. We use encryption when transmitting your sensitive personal information, and the servers storing your data always adhere to independent third-party security certifications.
+You can read the full version of our official privacy policy here: [link]. If you ever feel that we are not abiding by this privacy policy, please contact us immediately at [number].
+Regards,
+[YOUR SIGNATURE]</textarea>
+        </div>
+        <div class="card" style="max-width: 420px; flex: 1 1 400px;">
+          <h2>Cancel subscription request</h2>
+          <p>Thanks for giving [PRODUCT/ SERVICE] a try. As much as we would like you to stay with us for the long term, we understand and accept your decision to cancel your account...</p>
+          <button class="btn" onclick="copyTemplate('template10')">Copy to clipboard</button>
+          <textarea id="template10" style="display:none;">Hi [NAME],
+Thanks for giving [PRODUCT/ SERVICE] a try. As much as we would like you to stay with us for the long term, we understand and accept your decision to cancel your account regardless of any reason. We have a quick question that we hope you could answer that would help us improve [PRODUCT/ SERVICE].
+Why did you decide to cancel? Just click on the most appropriate answer:
+Didn’t find a good use case for the productWanted more featuresPricing too high
+We appreciate the help and hope to welcome you back again in the future!
+All the best,
+[YOUR SIGNATURE]</textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    function copyTemplate(id) {
+      var textarea = document.getElementById(id);
+      textarea.style.display = 'block';
+      textarea.select();
+      textarea.setSelectionRange(0, 99999); // For mobile devices
+      document.execCommand('copy');
+      textarea.style.display = 'none';
+      alert('Template copied to clipboard!');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (!res.ok) throw new Error('Not logged in');
+        const user = await res.json();
+        updateSidebar(user);
+
+        // Only allow admin (1) and agent (2)
+        if (user.role_id !== 1 && user.role_id !== 2) {
+          window.location.href = 'customer_dashboard.html';
+          return;
+        }
+      } catch (err) {
+        window.location.href = 'signin.html';
+      }
+    });
+
+    function updateSidebar(user) {
+      const isAdmin = user.role_id === 1;
+      const isAgent = user.role_id === 2;
+
+      // Set hrefs based on role
+      document.querySelector('a[href="customer_dashboard.html"]').href = isAdmin ? 'admin_dashboard.html' : 'agent_dashboard.html';
+      document.querySelector('a[href="settings.html"]').href = isAdmin ? 'settings.html' : 'agent_settings.html';
+      const navTools = document.querySelector('a[href="customer_tools.html"]');
+      if (navTools) navTools.href = isAdmin ? 'admin_tools.html' : 'agent_tools.html';
+
+      // Hide reports for agents
+      if (isAgent) {
+        document.querySelector('a[href="reports.html"]')?.parentElement.remove();
+      }
+
+      if (isAdmin) {
+        const usersLi = document.createElement('li');
+        usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
+        document.querySelector('.sidebar ul').appendChild(usersLi);
+      }
+    }
+  </script>
+</body>
+</html> 

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Helpdesk | Customer Settings</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Help Desk</h2>
+      <ul>
+        <li><a href="customer_dashboard.html" class="nav-link"><span>📋</span> Tickets</a></li>
+        <li><a href="knowledgebase.html" class="nav-link"><span>📚</span> Knowledgebase</a></li>
+        <li><a href="categories.html" class="nav-link"><span>📂</span> Categories</a></li>
+        <li><a class="nav-link active"><span>⚙️</span> Settings</a></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <header class="dashboard-header">
+        <h1 style="font-size:2rem; margin-bottom: 0.5em;">⚙️ Customer Settings</h1>
+      </header>
+      <section class="card" style="max-width: 480px; margin: 5px auto; box-shadow: 0 8px 32px rgba(0,0,0,0.10); border-radius: 18px; padding: 36px 32px 28px 32px; background: #fff;">
+        <h2 style="font-size:1.2rem; margin-bottom: 18px; color:#05386B;"><span style="font-size:1.3em;">👤</span> Profile Information</h2>
+        <form class="settings-form" id="profileForm" style="margin-bottom: 18px;">
+          <div style="margin-bottom: 18px;">
+            <label style="font-weight:500;">Name<br><input type="text" id="profileName" placeholder="Your Name" required class="input-box" style="margin-top:6px;" /></label>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <label style="font-weight:500;">Email<br><input type="email" id="profileEmail" placeholder="Your Email" required class="input-box" style="margin-top:6px;" /></label>
+          </div>
+          <button type="submit" class="btn" style="margin-top: 8px;">Update Profile</button>
+        </form>
+        <div id="profileMsg" style="margin:10px 0;min-height:20px;font-weight:500;"></div>
+        <hr style="margin: 32px 0 24px 0; border: none; border-top: 1.5px solid #e0e0e0;">
+        <h2 style="font-size:1.2rem; margin-bottom: 18px; color:#05386B;"><span style="font-size:1.3em;">🔒</span> Change Password</h2>
+        <form class="settings-form" id="passwordForm" style="margin-bottom: 18px;">
+          <div style="margin-bottom: 18px;">
+            <label style="font-weight:500;">Current Password<br><input type="password" id="currentPassword" required class="input-box" style="margin-top:6px;" /></label>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <label style="font-weight:500;">New Password<br><input type="password" id="newPassword" required class="input-box" style="margin-top:6px;" /></label>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <label style="font-weight:500;">Confirm New Password<br><input type="password" id="confirmPassword" required class="input-box" style="margin-top:6px;" /></label>
+          </div>
+          <button type="submit" class="btn" style="margin-top: 8px;">Change Password</button>
+        </form>
+        <div id="passwordMsg" style="margin:10px 0;min-height:20px;font-weight:500;"></div>
+      </section>
+    </main>
+  </div>
+  <script>
+    // Fetch and fill profile info
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('/api/profile', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load profile');
+        const data = await res.json();
+        document.getElementById('profileName').value = data.USERNAME || '';
+        document.getElementById('profileEmail').value = data.EMAIL || '';
+      } catch (err) {
+        document.getElementById('profileMsg').textContent = '❌ Could not load profile.';
+        document.getElementById('profileMsg').style.color = 'red';
+      }
+    });
+    // Profile update
+    document.getElementById('profileForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const username = document.getElementById('profileName').value;
+      const email = document.getElementById('profileEmail').value;
+      const msg = document.getElementById('profileMsg');
+      msg.textContent = '';
+      try {
+        const res = await fetch('/api/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username, email })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          msg.textContent = '✅ Profile updated!';
+          msg.style.color = 'green';
+        } else {
+          msg.textContent = result.message || '❌ Failed to update profile.';
+          msg.style.color = 'red';
+        }
+      } catch (err) {
+        msg.textContent = '❌ Error updating profile.';
+        msg.style.color = 'red';
+      }
+    });
+    // Password change
+    document.getElementById('passwordForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const msg = document.getElementById('passwordMsg');
+      msg.textContent = '';
+      if (newPassword !== confirmPassword) {
+        msg.textContent = '❌ New passwords do not match.';
+        msg.style.color = 'red';
+        return;
+      }
+      try {
+        const res = await fetch('/api/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+        const result = await res.json();
+        if (res.ok) {
+          msg.textContent = '✅ Password changed!';
+          msg.style.color = 'green';
+          document.getElementById('passwordForm').reset();
+        } else {
+          msg.textContent = result.message || '❌ Failed to change password.';
+          msg.style.color = 'red';
+        }
+      } catch (err) {
+        msg.textContent = '❌ Error changing password.';
+        msg.style.color = 'red';
+      }
+    });
+  </script>
+</body>
+</html> 

@@ -169,41 +169,39 @@ function fetchUnavailability() {
 
 renderCalendar();
 
-    window.addEventListener("DOMContentLoaded", async () => {
-      try {
-        const response = await fetch('http://localhost:3000/api/me', { credentials: 'include' });
+  window.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/me', { credentials: 'include' });
       if (!response.ok) throw new Error("User not authenticated");
-
       const user = await response.json();
-
-      const navTickets = document.getElementById('nav-tickets');
-      if (user.role_id === 1) {
-        navTickets.href = 'admin_dashboard.html';
-      } else if (user.role_id === 2) {
-        navTickets.href = 'agent_dashboard.html';
-      } else {
-        navTickets.href = 'customer_dashboard.html';
-      }
-
-      // Set Tools link based on role (always run this after user info is fetched)
-      const navTools = document.getElementById('nav-tools');
-      if (user.role_id === 1) navTools.href = 'admin_tools.html';
-      else if (user.role_id === 2) navTools.href = 'agent_tools.html';
-      else navTools.href = 'customer_tools.html';
-
-      // Inject Users link if admin
-      if (user.role_id === 1) {
-        const usersLi = document.createElement('li');
-        usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
-        document.querySelector('.sidebar ul').appendChild(usersLi);
-      }
-
+      updateSidebar(user);
     } catch (err) {
       console.error("🔒 Could not fetch user info, please login again", err);
       window.location.href = 'signin.html';
     }
-    });
+  });
 
-  </script>
+  function updateSidebar(user) {
+    const isAdmin = user.role_id === 1;
+    const isAgent = user.role_id === 2;
+
+    // Set hrefs based on role
+    document.getElementById('nav-tickets').href = isAdmin ? 'admin_dashboard.html' : 'agent_dashboard.html';
+    document.getElementById('nav-settings').href = isAdmin ? 'settings.html' : 'agent_settings.html';
+    const navTools = document.querySelector('a[href="tools.html"]');
+    if (navTools) navTools.href = isAdmin ? 'admin_tools.html' : 'agent_tools.html';
+
+    // Hide links for agent
+    if (isAgent) {
+      document.getElementById('nav-reports')?.parentElement.remove();
+    }
+    
+    if (isAdmin) {
+      const usersLi = document.createElement('li');
+      usersLi.innerHTML = '<a href="admin_users.html" class="nav-link" id="nav-users"><span>👤</span> Users</a>';
+      document.querySelector('.sidebar ul').appendChild(usersLi);
+    }
+  }
+</script>
 </body>
 </html>

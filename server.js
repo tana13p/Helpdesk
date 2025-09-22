@@ -17,6 +17,7 @@ const storage = multer.diskStorage({
     cb(null, uniqueName);
   }
 });
+const PDFDocument = require('pdfkit');
 
 
 const app = express();
@@ -619,8 +620,8 @@ app.post('/api/unavailability', async (req, res) => {
     }
 
     await connection.execute(
-      `INSERT INTO calendar_unavailability (user_id, unavailable_date, reason_desc) 
-       VALUES (:1, :2, :3)`,
+      `INSERT INTO calendar_unavailability (id, user_id, unavailable_date, reason_desc) 
+       VALUES (CALENDAR_UNAVAILABILITY_SEQ.NEXTVAL, :1, :2, :3)`,
       [user.user_id, new Date(date), reason || 'Unavailable'],
       { autoCommit: true }
     );
@@ -996,5 +997,603 @@ app.post('/api/admin/add-user', async (req, res) => {
       console.error('❌ Error creating user:', err);
       res.status(500).json({ success: false, message: 'Failed to create user.' });
     }
+  }
+});
+
+// Reports summary endpoint for admin
+app.get('/api/reports/summary', async (req, res) => {
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  try {
+    const connection = await getConnection();
+    // Total tickets
+    const totalResult = await connection.execute('SELECT COUNT(*) AS TOTAL FROM tickets');
+    // Open tickets (status_id = 1)
+    const openResult = await connection.execute('SELECT COUNT(*) AS OPEN FROM tickets WHERE status_id = 1');
+    // Resolved tickets (status_id = 3)
+    const resolvedResult = await connection.execute('SELECT COUNT(*) AS RESOLVED FROM tickets WHERE status_id = 3');
+    // SLA breaches (response_due < SYSDATE and status_id not resolved/closed)
+    const slaResult = await connection.execute('SELECT COUNT(*) AS SLA_BREACHES FROM tickets WHERE response_due < SYSDATE AND status_id NOT IN (3,4)');
+    await connection.close();
+    res.json({
+      totalTickets: totalResult.rows[0].TOTAL,
+      openTickets: openResult.rows[0].OPEN,
+      resolvedTickets: resolvedResult.rows[0].RESOLVED,
+      slaBreaches: slaResult.rows[0].SLA_BREACHES
+    });
+  } catch (err) {
+    console.error('❌ Error fetching report summary:', err);
+    res.status(500).json({ message: 'Failed to fetch report summary' });
+  }
+});
+
+// Agent-wise performance report endpoint for admin
+app.get('/api/reports/agents', async (req, res) => {
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  try {
+    const connection = await getConnection();
+    // Get all agents
+    const agentsResult = await connection.execute(`
+      SELECT user_id, username FROM users WHERE role_id = 2
+    `);
+    const agents = agentsResult.rows;
+    const report = [];
+    for (const agent of agents) {
+      const agentId = agent.USER_ID;
+      const agentName = agent.USERNAME;
+      // Assigned tickets
+      const assignedResult = await connection.execute(
+        `SELECT COUNT(*) AS ASSIGNED FROM tickets WHERE assigned_to = :agentId`,
+        { agentId }
+      );
+      // Resolved tickets
+      const resolvedResult = await connection.execute(
+        `SELECT COUNT(*) AS RESOLVED FROM tickets WHERE assigned_to = :agentId AND status_id = 3`,
+        { agentId }
+      );
+      // Average response time (in hours)
+      const avgResponseResult = await connection.execute(
+        `SELECT AVG((response_due - created_at) * 24) AS AVG_RESPONSE_HRS FROM tickets WHERE assigned_to = :agentId AND response_due IS NOT NULL AND created_at IS NOT NULL`,
+        { agentId }
+      );
+      // Average resolution time (in hours)
+      const avgResolutionResult = await connection.execute(
+        `SELECT AVG((resolution_due - created_at) * 24) AS AVG_RESOLUTION_HRS FROM tickets WHERE assigned_to = :agentId AND resolution_due IS NOT NULL AND created_at IS NOT NULL`,
+        { agentId }
+      );
+      // SLA breaches
+      const slaBreachesResult = await connection.execute(
+        `SELECT COUNT(*) AS SLA_BREACHES FROM tickets WHERE assigned_to = :agentId AND response_due < SYSDATE AND status_id NOT IN (3,4)`,
+        { agentId }
+      );
+      report.push({
+        agentId,
+        agentName,
+        assignedTickets: assignedResult.rows[0].ASSIGNED,
+        resolvedTickets: resolvedResult.rows[0].RESOLVED,
+        avgResponseTime: avgResponseResult.rows[0].AVG_RESPONSE_HRS ? Number(avgResponseResult.rows[0].AVG_RESPONSE_HRS).toFixed(2) : null,
+        avgResolutionTime: avgResolutionResult.rows[0].AVG_RESOLUTION_HRS ? Number(avgResolutionResult.rows[0].AVG_RESOLUTION_HRS).toFixed(2) : null,
+        slaBreaches: slaBreachesResult.rows[0].SLA_BREACHES
+      });
+    }
+    await connection.close();
+    res.json(report);
+  } catch (err) {
+    console.error('❌ Error fetching agent report:', err);
+    res.status(500).json({ message: 'Failed to fetch agent report' });
+  }
+});
+
+app.get('/api/reports/agent/:id/pdf', async (req, res) => {
+  const agentId = parseInt(req.params.id);
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  try {
+    const connection = await getConnection();
+    // Get agent info
+    const agentResult = await connection.execute(
+      'SELECT username FROM users WHERE user_id = :id',
+      { id: agentId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    if (agentResult.rows.length === 0) {
+      await connection.close();
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+    const agentName = agentResult.rows[0].USERNAME;
+    // Get stats
+    const [assignedResult, resolvedResult, avgResponseResult, avgResolutionResult, slaBreachesResult] = await Promise.all([
+      connection.execute('SELECT COUNT(*) AS ASSIGNED FROM tickets WHERE assigned_to = :agentId', { agentId }),
+      connection.execute('SELECT COUNT(*) AS RESOLVED FROM tickets WHERE assigned_to = :agentId AND status_id = 3', { agentId }),
+      connection.execute('SELECT AVG((response_due - created_at) * 24) AS AVG_RESPONSE_HRS FROM tickets WHERE assigned_to = :agentId AND response_due IS NOT NULL AND created_at IS NOT NULL', { agentId }),
+      connection.execute('SELECT AVG((resolution_due - created_at) * 24) AS AVG_RESOLUTION_HRS FROM tickets WHERE assigned_to = :agentId AND resolution_due IS NOT NULL AND created_at IS NOT NULL', { agentId }),
+      connection.execute('SELECT COUNT(*) AS SLA_BREACHES FROM tickets WHERE assigned_to = :agentId AND response_due < SYSDATE AND status_id NOT IN (3,4)', { agentId })
+    ]);
+    await connection.close();
+    // Prepare stats
+    const stats = {
+      assignedTickets: assignedResult.rows[0].ASSIGNED,
+      resolvedTickets: resolvedResult.rows[0].RESOLVED,
+      avgResponseTime: avgResponseResult.rows[0].AVG_RESPONSE_HRS ? Number(avgResponseResult.rows[0].AVG_RESPONSE_HRS).toFixed(2) : 'N/A',
+      avgResolutionTime: avgResolutionResult.rows[0].AVG_RESOLUTION_HRS ? Number(avgResolutionResult.rows[0].AVG_RESOLUTION_HRS).toFixed(2) : 'N/A',
+      slaBreaches: slaBreachesResult.rows[0].SLA_BREACHES
+    };
+    // Generate PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=agent_report_${agentId}.pdf`);
+    const doc = new PDFDocument();
+    doc.pipe(res);
+    doc.fontSize(22).text(`Agent Performance Report`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(16).text(`Agent: ${agentName}`);
+    doc.moveDown();
+    doc.fontSize(13).text(`Total Tickets Assigned: ${stats.assignedTickets}`);
+    doc.text(`Tickets Resolved: ${stats.resolvedTickets}`);
+    doc.text(`Average Response Time (hrs): ${stats.avgResponseTime}`);
+    doc.text(`Average Resolution Time (hrs): ${stats.avgResolutionTime}`);
+    doc.text(`SLA Breaches: ${stats.slaBreaches}`);
+    doc.end();
+  } catch (err) {
+    console.error('❌ Error generating agent PDF report:', err);
+    res.status(500).json({ message: 'Failed to generate PDF report' });
+  }
+});
+
+app.post('/api/reports/dashboard-pdf', async (req, res) => {
+  try {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', async () => {
+      const { summary, charts } = JSON.parse(body);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=dashboard_report.pdf');
+      const doc = new PDFDocument({ margin: 36 });
+      doc.pipe(res);
+      // Title
+      doc.fontSize(22).text('Service Desk Dashboard Report', { align: 'center' });
+      doc.moveDown(1.5);
+      // Summary cards
+      const cardWidth = 130, cardHeight = 70, gap = 18;
+      let x = doc.page.margins.left, y = doc.y;
+      summary.forEach((card, i) => {
+        doc.save();
+        doc.roundedRect(x, y, cardWidth, cardHeight, 10).fillAndStroke(card.color || '#f5f5f5', '#e0e0e0');
+        doc.fillColor('#fff').fontSize(12).text(card.title, x + 12, y + 12, { width: cardWidth - 24 });
+        doc.fontSize(22).text(card.value, x + 12, y + 30, { width: cardWidth - 24 });
+        doc.fontSize(10).fillColor('#f5f5f5').text(card.subtitle, x + 12, y + 56, { width: cardWidth - 24 });
+        doc.restore();
+        x += cardWidth + gap;
+      });
+      doc.moveDown(4);
+      // Charts
+      for (const chart of charts) {
+        doc.addPage();
+        doc.fontSize(16).fillColor('#05386B').text(chart.title, { align: 'center' });
+        doc.moveDown(0.5);
+        // Embed chart image
+        const base64 = chart.image.split(',')[1];
+        const imgBuffer = Buffer.from(base64, 'base64');
+        doc.image(imgBuffer, { fit: [450, 250], align: 'center', valign: 'center' });
+        doc.moveDown(1.5);
+      }
+      doc.end();
+    });
+  } catch (err) {
+    console.error('❌ Error generating dashboard PDF:', err);
+    res.status(500).json({ message: 'Failed to generate dashboard PDF' });
+  }
+});
+
+// --- Admin Settings CRUD Endpoints ---
+
+// Middleware: admin only
+function requireAdmin(req, res, next) {
+  console.log('🔐 requireAdmin middleware - userId:', req.session.userId, 'role_id:', req.session.role_id);
+  if (!req.session.userId || req.session.role_id !== 1) {
+    console.log('❌ Access denied: not admin');
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  console.log('✅ Admin access granted');
+  next();
+}
+
+// ---- CATEGORIES ----
+app.get('/api/settings/categories', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute('SELECT CATEGORY_ID, NAME, DESCRIPTION FROM CATEGORIES ORDER BY CATEGORY_ID');
+    await connection.close();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch categories' });
+  }
+});
+app.post('/api/settings/categories', requireAdmin, async (req, res) => {
+  const { name, description } = req.body;
+  if (!name) return res.status(400).json({ message: 'Name required' });
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'INSERT INTO CATEGORIES (CATEGORY_ID, NAME, DESCRIPTION) VALUES (ISEQ$$_74264.NEXTVAL, :name, :description)',
+      { name, description }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Category added' });
+  } catch (err) {
+    console.error('❌ Error adding category:', err);
+    res.status(500).json({ message: 'Failed to add category' });
+  }
+});
+app.put('/api/settings/categories/:id', requireAdmin, async (req, res) => {
+  const { name, description } = req.body;
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'UPDATE CATEGORIES SET NAME = :name, DESCRIPTION = :description WHERE CATEGORY_ID = :id',
+      { name, description, id: req.params.id }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Category updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update category' });
+  }
+});
+app.delete('/api/settings/categories/:id', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    await connection.execute('DELETE FROM CATEGORIES WHERE CATEGORY_ID = :id', { id: req.params.id }, { autoCommit: true });
+    await connection.close();
+    res.json({ message: 'Category deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete category' });
+  }
+});
+
+// ---- SUBCATEGORIES ----
+app.get('/api/settings/subcategories', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute('SELECT SUBCATEGORY_ID, CATEGORY_ID, NAME, DESCRIPTION FROM SUBCATEGORIES ORDER BY SUBCATEGORY_ID');
+    await connection.close();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch subcategories' });
+  }
+});
+// SUBCATEGORIES: use ISEQ$$_74265.NEXTVAL
+app.post('/api/settings/subcategories', requireAdmin, async (req, res) => {
+  const { category_id, name, description } = req.body;
+  if (!category_id || !name) return res.status(400).json({ message: 'Category and name required' });
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'INSERT INTO SUBCATEGORIES (SUBCATEGORY_ID, CATEGORY_ID, NAME, DESCRIPTION) VALUES (ISEQ$$_74267.NEXTVAL, :category_id, :name, :description)',
+      { category_id, name, description }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Subcategory added' });
+  } catch (err) {
+    console.error('❌ Error adding subcategory:', err);
+    res.status(500).json({ message: 'Failed to add subcategory' });
+  }
+});
+app.put('/api/settings/subcategories/:id', requireAdmin, async (req, res) => {
+  const { category_id, name, description } = req.body;
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'UPDATE SUBCATEGORIES SET CATEGORY_ID = :category_id, NAME = :name, DESCRIPTION = :description WHERE SUBCATEGORY_ID = :id',
+      { category_id, name, description, id: req.params.id }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Subcategory updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update subcategory' });
+  }
+});
+app.delete('/api/settings/subcategories/:id', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    await connection.execute('DELETE FROM SUBCATEGORIES WHERE SUBCATEGORY_ID = :id', { id: req.params.id }, { autoCommit: true });
+    await connection.close();
+    res.json({ message: 'Subcategory deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete subcategory' });
+  }
+});
+
+// ---- SLA LEVELS ----
+app.get('/api/settings/sla', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute('SELECT SLA_LEVEL_ID, NAME, DESCRIPTION, RESPONSE_TIME_HOURS, RESOLUTION_TIME_HOURS FROM SLA_LEVELS ORDER BY SLA_LEVEL_ID');
+    await connection.close();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch SLA levels' });
+  }
+});
+// SLA_LEVELS: use ISEQ$$_74266.NEXTVAL
+app.post('/api/settings/sla', requireAdmin, async (req, res) => {
+  const { name, description, response_time_hours, resolution_time_hours } = req.body;
+  if (!name) return res.status(400).json({ message: 'Name required' });
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute('SELECT NVL(MAX(SLA_LEVEL_ID), 0) + 1 AS NEXT_ID FROM SLA_LEVELS');
+    const nextId = result.rows[0].NEXT_ID;
+    await connection.execute(
+      'INSERT INTO SLA_LEVELS (SLA_LEVEL_ID, NAME, DESCRIPTION, RESPONSE_TIME_HOURS, RESOLUTION_TIME_HOURS) VALUES (:id, :name, :description, :response_time_hours, :resolution_time_hours)',
+      { id: nextId, name, description, response_time_hours, resolution_time_hours }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'SLA level added' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add SLA level' });
+  }
+});
+app.put('/api/settings/sla/:id', requireAdmin, async (req, res) => {
+  const { name, description, response_time_hours, resolution_time_hours } = req.body;
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'UPDATE SLA_LEVELS SET NAME = :name, DESCRIPTION = :description, RESPONSE_TIME_HOURS = :response_time_hours, RESOLUTION_TIME_HOURS = :resolution_time_hours WHERE SLA_LEVEL_ID = :id',
+      { name, description, response_time_hours, resolution_time_hours, id: req.params.id }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'SLA level updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update SLA level' });
+  }
+});
+app.delete('/api/settings/sla/:id', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    await connection.execute('DELETE FROM SLA_LEVELS WHERE SLA_LEVEL_ID = :id', { id: req.params.id }, { autoCommit: true });
+    await connection.close();
+    res.json({ message: 'SLA level deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete SLA level' });
+  }
+});
+
+// ---- ROLES ----
+app.get('/api/settings/roles', requireAdmin, async (req, res) => {
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute('SELECT ROLE_ID, ROLE_NAME FROM ROLES ORDER BY ROLE_ID');
+    await connection.close();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch roles' });
+  }
+});
+// ROLES: use ISEQ$$_74267.NEXTVAL
+app.post('/api/settings/roles', requireAdmin, async (req, res) => {
+  const { role_name } = req.body;
+  if (!role_name) return res.status(400).json({ message: 'Role name required' });
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'INSERT INTO ROLES (ROLE_ID, ROLE_NAME) VALUES (ISEQ$$_74267.NEXTVAL, :role_name)',
+      { role_name }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Role added' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to add role' });
+  }
+});
+app.put('/api/settings/roles/:id', requireAdmin, async (req, res) => {
+  const { role_name } = req.body;
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'UPDATE ROLES SET ROLE_NAME = :role_name WHERE ROLE_ID = :id',
+      { role_name, id: req.params.id }, { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Role updated' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update role' });
+  }
+});
+app.delete('/api/settings/roles/:id', requireAdmin, async (req, res) => {
+  console.log('🗑️ Attempting to delete role ID:', req.params.id);
+  try {
+    const connection = await getConnection();
+    console.log('✅ Database connection established');
+    
+    // Check if role is being used by any users
+    console.log('🔍 Checking if role is used by users...');
+    const userCheck = await connection.execute('SELECT COUNT(*) as user_count FROM USERS WHERE ROLE_ID = :id', { id: req.params.id });
+    console.log('👥 Users with this role:', userCheck.rows[0].USER_COUNT);
+    
+    if (userCheck.rows[0].USER_COUNT > 0) {
+      await connection.close();
+      console.log('❌ Cannot delete: role is assigned to users');
+      return res.status(400).json({ message: 'Cannot delete role: it is assigned to users' });
+    }
+    
+    console.log('🗑️ Proceeding with role deletion...');
+    const result = await connection.execute('DELETE FROM ROLES WHERE ROLE_ID = :id', { id: req.params.id }, { autoCommit: true });
+    console.log('📊 Rows affected:', result.rowsAffected);
+    await connection.close();
+    console.log('✅ Database connection closed');
+    
+    if (result.rowsAffected === 0) {
+      console.log('❌ Role not found in database');
+      return res.status(404).json({ message: 'Role not found' });
+    }
+    
+    console.log('✅ Role deleted successfully');
+    res.json({ message: 'Role deleted successfully' });
+  } catch (err) {
+    console.error('❌ Error deleting role:', err);
+    res.status(500).json({ message: 'Failed to delete role: ' + err.message });
+  }
+});
+
+// --- USER PROFILE ENDPOINTS ---
+app.get('/api/profile', async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: 'Not authenticated' });
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute(
+      'SELECT user_id, username, email, role_id FROM users WHERE user_id = :userId',
+      { userId: req.session.userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    await connection.close();
+    if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('❌ Error fetching profile:', err);
+    res.status(500).json({ message: 'Failed to fetch profile' });
+  }
+});
+
+app.put('/api/profile', async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: 'Not authenticated' });
+  const { username, email } = req.body;
+  if (!username || !email) return res.status(400).json({ message: 'Missing fields' });
+  try {
+    const connection = await getConnection();
+    await connection.execute(
+      'UPDATE users SET username = :username, email = :email WHERE user_id = :userId',
+      { username, email, userId: req.session.userId },
+      { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Profile updated' });
+  } catch (err) {
+    console.error('❌ Error updating profile:', err);
+    res.status(500).json({ message: 'Failed to update profile' });
+  }
+});
+
+// --- CHANGE PASSWORD ENDPOINT ---
+app.post('/api/change-password', async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ message: 'Not authenticated' });
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Missing fields' });
+  try {
+    const connection = await getConnection();
+    const result = await connection.execute(
+      'SELECT password_hash FROM users WHERE user_id = :userId',
+      { userId: req.session.userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    if (result.rows.length === 0) {
+      await connection.close();
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const bcrypt = require('bcrypt');
+    const match = await bcrypt.compare(currentPassword, result.rows[0].PASSWORD_HASH);
+    if (!match) {
+      await connection.close();
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await connection.execute(
+      'UPDATE users SET password_hash = :newHash WHERE user_id = :userId',
+      { newHash, userId: req.session.userId },
+      { autoCommit: true }
+    );
+    await connection.close();
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error('❌ Error changing password:', err);
+    res.status(500).json({ message: 'Failed to change password' });
+  }
+});
+
+// Agent-specific summary stats
+app.get('/api/reports/agent/:id/summary', async (req, res) => {
+  const agentId = parseInt(req.params.id);
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  try {
+    const connection = await getConnection();
+    // Total tickets assigned
+    const totalResult = await connection.execute('SELECT COUNT(*) AS TOTAL FROM tickets WHERE assigned_to = :agentId', { agentId });
+    // Open tickets
+    const openResult = await connection.execute('SELECT COUNT(*) AS OPEN FROM tickets WHERE assigned_to = :agentId AND status_id = 1', { agentId });
+    // Resolved tickets
+    const resolvedResult = await connection.execute('SELECT COUNT(*) AS RESOLVED FROM tickets WHERE assigned_to = :agentId AND status_id = 3', { agentId });
+    // SLA compliance
+    const slaTotal = await connection.execute('SELECT COUNT(*) AS TOTAL FROM tickets WHERE assigned_to = :agentId AND sla_id IS NOT NULL', { agentId });
+    const slaMet = await connection.execute('SELECT COUNT(*) AS MET FROM tickets WHERE assigned_to = :agentId AND sla_id IS NOT NULL AND response_due >= updated_at', { agentId });
+    // Avg response/resolution time
+    const avgResponse = await connection.execute('SELECT AVG((response_due - created_at) * 24) AS AVG_RESPONSE_HRS FROM tickets WHERE assigned_to = :agentId AND response_due IS NOT NULL AND created_at IS NOT NULL', { agentId });
+    const avgResolution = await connection.execute('SELECT AVG((resolution_due - created_at) * 24) AS AVG_RESOLUTION_HRS FROM tickets WHERE assigned_to = :agentId AND resolution_due IS NOT NULL AND created_at IS NOT NULL', { agentId });
+    // CSAT (dummy for now)
+    const csat = 4.6;
+    await connection.close();
+    res.json({
+      totalTickets: totalResult.rows[0].TOTAL,
+      openTickets: openResult.rows[0].OPEN,
+      resolvedTickets: resolvedResult.rows[0].RESOLVED,
+      slaCompliance: slaTotal.rows[0].TOTAL ? Math.round((slaMet.rows[0].MET / slaTotal.rows[0].TOTAL) * 100) : 0,
+      avgResponseTime: avgResponse.rows[0].AVG_RESPONSE_HRS ? Number(avgResponse.rows[0].AVG_RESPONSE_HRS).toFixed(2) : 'N/A',
+      avgResolutionTime: avgResolution.rows[0].AVG_RESOLUTION_HRS ? Number(avgResolution.rows[0].AVG_RESOLUTION_HRS).toFixed(2) : 'N/A',
+      csat
+    });
+  } catch (err) {
+    console.error('❌ Error fetching agent summary:', err);
+    res.status(500).json({ message: 'Failed to fetch agent summary' });
+  }
+});
+
+// Agent-specific chart data
+app.get('/api/reports/agent/:id/charts', async (req, res) => {
+  const agentId = parseInt(req.params.id);
+  if (!req.session.userId || req.session.role_id !== 1) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+  try {
+    const connection = await getConnection();
+    // Ticket volume over time (by month)
+    const volumeResult = await connection.execute(
+      `SELECT TO_CHAR(created_at, 'Mon') AS MONTH, COUNT(*) AS COUNT
+       FROM tickets WHERE assigned_to = :agentId GROUP BY TO_CHAR(created_at, 'Mon'), TO_NUMBER(TO_CHAR(created_at, 'MM'))
+       ORDER BY TO_NUMBER(TO_CHAR(created_at, 'MM'))`,
+      { agentId }
+    );
+    // Status distribution
+    const statusResult = await connection.execute(
+      `SELECT status_id, COUNT(*) AS COUNT FROM tickets WHERE assigned_to = :agentId GROUP BY status_id`,
+      { agentId }
+    );
+    // Priority distribution
+    const priorityResult = await connection.execute(
+      `SELECT priority_id, COUNT(*) AS COUNT FROM tickets WHERE assigned_to = :agentId GROUP BY priority_id`,
+      { agentId }
+    );
+    // SLA compliance over time (dummy)
+    const slaResult = { labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], data: [91,90,89,92,93,91,90,89,92,93,91,90] };
+    // Tickets by category
+    const categoryResult = await connection.execute(
+      `SELECT c.name AS CATEGORY, COUNT(*) AS COUNT FROM tickets t LEFT JOIN categories c ON t.category_id = c.category_id WHERE assigned_to = :agentId GROUP BY c.name`,
+      { agentId }
+    );
+    // CSAT (dummy)
+    const csat = 4.6;
+    await connection.close();
+    res.json({
+      ticketVolume: volumeResult.rows,
+      statusDist: statusResult.rows,
+      priorityDist: priorityResult.rows,
+      slaCompliance: slaResult,
+      categoryDist: categoryResult.rows,
+      csat
+    });
+  } catch (err) {
+    console.error('❌ Error fetching agent charts:', err);
+    res.status(500).json({ message: 'Failed to fetch agent charts' });
   }
 });
